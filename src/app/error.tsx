@@ -1,0 +1,1 @@
+"use client"; export default function Error({reset}:{reset:()=>void}){return <main className="main"><h1>Something went wrong</h1><p className="muted">The dashboard could not load live data.</p><button className="btn" onClick={reset}>Retry</button></main>}
