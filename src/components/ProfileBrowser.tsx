@@ -46,7 +46,6 @@ export function ProfileBrowser({
   overallRank?: number | null;
   wrLeaderboardRank?: number | null;
 }) {
-  const [isTiersExpanded, setIsTiersExpanded] = useState<boolean>(true);
   const [selectedTier, setSelectedTier] = useState<number | null>(null);
   const [rankedOnly, setRankedOnly] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<"completed" | "incomplete">("completed");
@@ -411,23 +410,32 @@ export function ProfileBrowser({
                 </div>
               </div>
 
-              {/* Expand / Collapse Control */}
-              <button
-                type="button"
-                className="tier-toggle-btn"
-                onClick={() => setIsTiersExpanded(!isTiersExpanded)}
+              {/* Overall Completion Summary Badge */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "var(--panel)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "4px 10px",
+                  fontSize: "11px",
+                  fontFamily: "ui-monospace, monospace",
+                  fontWeight: 600,
+                  color: "#ffffff",
+                }}
               >
-                <span>{isTiersExpanded ? "Hide ▲" : "Show ▼"}</span>
-                <span className="mono" style={{ color: "var(--text-subtle)", fontSize: "11px" }}>
+                <span style={{ color: "var(--text-subtle)" }}>Completed:</span>
+                <span>
                   {overallCompletion.completed}/{overallCompletion.total} ({overallCompletion.percent}%)
                 </span>
-              </button>
+              </div>
             </div>
           </div>
 
-          {/* Expandable Tier Completion Bars Section (Reverted Original Format) */}
-          {isTiersExpanded && (
-            <div className="tier-completion-section">
+          {/* Always Visible Tier Completion Bars Section */}
+          <div className="tier-completion-section">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                 <span style={{ fontSize: "11px", fontFamily: "ui-monospace, monospace", textTransform: "uppercase", color: "var(--text-subtle)", letterSpacing: "0.06em", fontWeight: 700 }}>
                   Completion per tier {rankedOnly ? "(Ranked)" : "(All)"}
@@ -489,7 +497,6 @@ export function ProfileBrowser({
                 })}
               </div>
             </div>
-          )}
         </section>
 
         {/* Right Column: 4 Info Summary Cards in 2x2 Grid (Stretching Evenly & Centered) */}
@@ -810,7 +817,7 @@ export function ProfileBrowser({
                     <td className="mono" style={{ color: "#ffffff", fontWeight: 600 }}>
                       {formatTime(r.time)}
                     </td>
-                    <td className="mono" style={{ color: points && points >= 900 ? "rgb(250, 204, 21)" : undefined }}>
+                    <td className="mono" style={{ color: rankColor, fontWeight: rank && rank <= 10 ? 600 : 500 }}>
                       {points != null
                         ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(points)
                         : "—"}
