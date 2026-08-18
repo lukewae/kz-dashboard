@@ -817,7 +817,7 @@ export function ProfileBrowser({
                     <td className="mono" style={{ color: "#ffffff", fontWeight: 600 }}>
                       {formatTime(r.time)}
                     </td>
-                    <td className="mono" style={{ color: rankColor, fontWeight: rank && rank <= 10 ? 600 : 500 }}>
+                    <td className="mono">
                       {points != null
                         ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(points)
                         : "—"}
