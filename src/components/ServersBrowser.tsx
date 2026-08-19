@@ -169,9 +169,11 @@ export function formatLocation(countryCode?: string, region?: string): string {
 
 export function ServerMapThumb({
   mapName,
+  serverId,
   size = "md",
 }: {
   mapName: string;
+  serverId?: number;
   size?: "sm" | "md";
 }) {
   const [hasError, setHasError] = useState(false);
@@ -179,9 +181,12 @@ export function ServerMapThumb({
   const src = hasError || isCustomOrUnknown ? "/kz-logo.png" : getMapImageUrl(mapName, 1);
   const showFallback = hasError || isCustomOrUnknown;
 
+  const targetHref = serverId ? `/servers/${serverId}` : `/maps/${encodeURIComponent(mapName || "maps")}`;
+  const targetTitle = serverId ? "View server details & player list" : `View map page for ${mapName}`;
+
   return (
     <Link
-      href={`/maps/${encodeURIComponent(mapName || "maps")}`}
+      href={targetHref}
       style={{
         display: "block",
         position: "relative",
@@ -194,7 +199,7 @@ export function ServerMapThumb({
         width: "100%",
         height: "100%",
       }}
-      title={`View map page for ${mapName}`}
+      title={targetTitle}
     >
       <img
         src={src}
@@ -582,14 +587,15 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
                 <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: "14px", alignItems: "start" }}>
                   {/* Map Artwork Box with State-tracked CS2KZ Logo Fallback */}
                   <div style={{ width: "110px" }}>
-                    <ServerMapThumb mapName={currentMap} size="md" />
+                    <ServerMapThumb mapName={currentMap} serverId={server.id} size="md" />
                   </div>
 
                   {/* Server Details Header */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: 0 }}>
                     {/* Server Name & Favorite Star Button */}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
-                      <div
+                      <Link
+                        href={`/servers/${server.id}`}
                         style={{
                           fontSize: "14px",
                           fontWeight: 700,
@@ -600,11 +606,13 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
                           whiteSpace: "nowrap",
                           lineHeight: 1.25,
                           flex: 1,
+                          textDecoration: "none",
                         }}
-                        title={server.name}
+                        className="hover-underline"
+                        title={`View ${server.name} server details & player list`}
                       >
                         {server.name}
-                      </div>
+                      </Link>
 
                       {/* Favorite Button */}
                       <button
@@ -651,9 +659,10 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
                     <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "2px" }}>
                       Map:{" "}
                       <Link
-                        href={`/maps/${encodeURIComponent(currentMap)}`}
+                        href={`/servers/${server.id}`}
                         style={{ color: "var(--user-blue)", textDecoration: "none", fontWeight: 600 }}
                         className="hover-underline"
+                        title="View server details"
                       >
                         {currentMap} ↗
                       </Link>
@@ -711,11 +720,11 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
                   </div>
                 </div>
 
-                {/* Bottom Action Buttons: Copy Connect & Direct Steam Connect */}
+                {/* Bottom Action Buttons: Copy Connect, Details, & Direct Steam Connect */}
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr auto",
+                    gridTemplateColumns: "1fr auto auto",
                     gap: "8px",
                     alignItems: "center",
                     marginTop: "auto",
@@ -731,7 +740,7 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
                       alignItems: "center",
                       justifyContent: "center",
                       gap: "6px",
-                      padding: "6px 12px",
+                      padding: "6px 10px",
                       borderRadius: "4px",
                       fontSize: "11px",
                       fontWeight: 700,
@@ -741,12 +750,37 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
                       color: isCopied ? "rgb(74, 222, 128)" : "#ffffff",
                       cursor: "pointer",
                       transition: "all 0.15s ease",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                     title={`Copy 'connect ${server.host}:${server.port}' to clipboard`}
                   >
                     <span>{isCopied ? "✓" : "📋"}</span>
-                    <span>{isCopied ? "Copied Connect Command!" : `connect ${server.host}:${server.port}`}</span>
+                    <span>{isCopied ? "Copied!" : `connect ${server.host}:${server.port}`}</span>
                   </button>
+
+                  <Link
+                    href={`/servers/${server.id}`}
+                    style={{
+                      padding: "6px 10px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      fontFamily: "monospace",
+                      background: "rgba(255, 255, 255, 0.06)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "4px",
+                      color: "var(--text-muted)",
+                      textDecoration: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      transition: "all 0.15s ease",
+                    }}
+                    title="View server details, map artwork, and active player list"
+                  >
+                    <span>Details</span>
+                  </Link>
 
                   <a
                     href={`steam://connect/${server.host}:${server.port}`}

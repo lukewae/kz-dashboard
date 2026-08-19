@@ -138,4 +138,5 @@ export interface KzDataProvider {
   getWorldRecords(options?: { mode?: Mode; limit?: number }): Promise<KzRecord[]>;
   getTopPlayers(options?: { mode?: Mode; limit?: number; offset?: number }): Promise<Page<KzPlayer>>;
   getServers(): Promise<KzServer[]>;
+  getServer(id: number | string): Promise<KzServer | null>;
 }

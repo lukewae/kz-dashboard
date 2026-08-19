@@ -881,12 +881,13 @@ export function OverviewDashboard({
                       {/* Top row */}
                       <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: "10px", alignItems: "center" }}>
                         <div style={{ width: "80px" }}>
-                          <ServerMapThumb mapName={currentMap} size="sm" />
+                          <ServerMapThumb mapName={currentMap} serverId={server.id} size="sm" />
                         </div>
 
                         <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                            <span
+                            <Link
+                              href={`/servers/${server.id}`}
                               style={{
                                 fontSize: "13px",
                                 fontWeight: 700,
@@ -894,11 +895,13 @@ export function OverviewDashboard({
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",
+                                textDecoration: "none",
                               }}
-                              title={server.name}
+                              className="hover-underline"
+                              title={`View ${server.name} server details & player list`}
                             >
                               {server.name}
-                            </span>
+                            </Link>
                             <button
                               type="button"
                               onClick={() => toggleFavorite(server.id)}
@@ -920,7 +923,7 @@ export function OverviewDashboard({
                             <CountryFlag countryCode={normalized.countryCode} size="sm" />
                             <span style={{ fontWeight: 600 }}>{formatLocation(normalized.countryCode, normalized.region)}</span>
                             <span>•</span>
-                            <Link href={`/maps/${encodeURIComponent(currentMap)}`} style={{ color: "var(--user-blue)", textDecoration: "none" }} className="hover-underline">
+                            <Link href={`/servers/${server.id}`} style={{ color: "var(--user-blue)", textDecoration: "none" }} className="hover-underline" title="View server details">
                               {currentMap}
                             </Link>
                           </div>

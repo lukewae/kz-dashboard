@@ -285,4 +285,13 @@ export const cs2kzProvider: KzDataProvider = {
       return [];
     }
   },
+
+  async getServer(id: number | string): Promise<KzServer | null> {
+    try {
+      return await request<KzServer>(`/servers/${id}`);
+    } catch (err) {
+      console.error(`Failed to get server info for ${id}:`, err);
+      return null;
+    }
+  },
 };
