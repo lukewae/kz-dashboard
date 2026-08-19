@@ -202,6 +202,14 @@ export function sanitizeSteamId(raw: string): string {
       break;
     }
   }
+
+  // Normalise SteamIDs starting with 0:1: to 1:1:
+  if (/^STEAM_0:1:/i.test(id)) {
+    id = id.replace(/^STEAM_0:1:/i, "STEAM_1:1:");
+  } else if (/^0:1:/.test(id)) {
+    id = id.replace(/^0:1:/, "1:1:");
+  }
+
   return id;
 }
 

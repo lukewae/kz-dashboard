@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySteamOpenIdResponse } from "@/lib/steamAuth";
+import { sanitizeSteamId } from "@/lib/format";
 
 export async function GET(req: NextRequest) {
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "localhost:3000";
@@ -17,9 +18,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}/?auth_error=steam_verification_failed`);
   }
 
+  const cleanSteamId = sanitizeSteamId(steamId2);
+
   // Set auth cookie and redirect back to homepage (or redirect with client hook param)
   const res = NextResponse.redirect(`${origin}/?login_success=1`);
-  res.cookies.set("cs2kz_steam_id", steamId2, {
+  res.cookies.set("cs2kz_steam_id", cleanSteamId, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365, // 1 year
     sameSite: "lax",
