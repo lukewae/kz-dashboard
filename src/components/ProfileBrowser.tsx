@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { formatRank, formatRelativeTime, formatTime, getPlayerRank, getRankColor, getRecordTimestamp, getTierInfo, resolveCanonicalTier, TIER_CONFIG } from "@/lib/format";
+import { formatFullTimestamp, formatRank, formatRelativeTime, formatTime, getPlayerRank, getRankColor, getRecordTimestamp, getTierInfo, resolveCanonicalTier, TIER_CONFIG } from "@/lib/format";
 import { KzMap, KzPlayer, KzRecord, Leaderboard, Mode, Tier } from "@/lib/types";
 
 const TIERS_LIST: { level: number; key: Tier; short: string; label: string; color: string; rgb: string }[] = [
@@ -770,7 +770,8 @@ export function ProfileBrowser({
                     <td
                       className="mono"
                       style={{ fontSize: "12px", color: "var(--text-subtle)", whiteSpace: "nowrap" }}
-                      title={recordDate ? recordDate.toLocaleString() : undefined}
+                      title={formatFullTimestamp(recordDate)}
+                      suppressHydrationWarning
                     >
                       {formatRelativeTime(recordDate)}
                     </td>

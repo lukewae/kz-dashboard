@@ -11,9 +11,6 @@ export default async function ServersPage() {
     <Shell>
       <div className="page-eyebrow">GLOBAL NETWORK // SERVERS</div>
       <h1 className="page-title">Global CKZ Servers</h1>
-      <p className="page-desc">
-        Explore live global CS2KZ servers worldwide. Check current map rotations, active player counts, and connect directly via console command or Steam.
-      </p>
 
       <ServersBrowser initialServers={servers} />
     </Shell>

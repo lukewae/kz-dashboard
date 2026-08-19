@@ -230,7 +230,7 @@ select:focus-visible {
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text);
-  margin-bottom: 8px;
+  margin-bottom: 20px;
 }
 
 .page-desc {

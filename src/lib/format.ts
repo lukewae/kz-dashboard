@@ -111,19 +111,28 @@ export function formatDifference(time: number, wr: number): string {
   return `+${diff.toFixed(3)}`;
 }
 
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 export function formatDate(isoString: string | null | undefined): string {
   if (!isoString) return "—";
   try {
     const d = new Date(isoString);
     if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return `${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
   } catch {
     return "—";
   }
+}
+
+export function formatFullTimestamp(date: Date | null): string | undefined {
+  if (!date || Number.isNaN(date.getTime())) return undefined;
+  const YYYY = date.getUTCFullYear();
+  const MM = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const DD = String(date.getUTCDate()).padStart(2, "0");
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const mm = String(date.getUTCMinutes()).padStart(2, "0");
+  const ss = String(date.getUTCSeconds()).padStart(2, "0");
+  return `${YYYY}-${MM}-${DD} ${hh}:${mm}:${ss} UTC`;
 }
 
 export function getMapImageUrl(mapName: string, courseIndex: number = 1): string {

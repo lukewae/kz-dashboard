@@ -31,9 +31,6 @@ export default async function LeaderboardsPage({ searchParams }: PageProps) {
     <Shell>
       <div className="page-eyebrow">CS2KZ // GLOBAL LEADERBOARDS</div>
       <h1 className="page-title">Leaderboards</h1>
-      <p className="page-desc">
-        Top player rankings by rating points alongside global world record holders for {mode === "classic" ? "Classic (CKZ)" : "Vanilla (VNL)"}.
-      </p>
 
       <LeaderboardsBrowser
         topPlayers={topPlayersData.values}

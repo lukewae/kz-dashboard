@@ -395,7 +395,7 @@ export function OverviewDashboard({
                       <span style={{ color: "rgba(255, 255, 255, 0.2)" }}>•</span>
                       <span>
                         <strong style={{ color: "#ffffff", fontWeight: 700 }}>
-                          {nextRankGoal.pointsNeeded.toLocaleString()}
+                          {nextRankGoal.pointsNeeded.toLocaleString("en-US")}
                         </strong>{" "}
                         pts til
                       </span>

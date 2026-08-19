@@ -11,9 +11,6 @@ export default async function MapsPage() {
     <Shell>
       <div className="page-eyebrow">CS2KZ DATABASE // BROWSE</div>
       <h1 className="page-title">Maps Directory</h1>
-      <p className="page-desc">
-        Browse all official CS2 KZ maps. Filter by difficulty tier (T1 to T8), search by map or mapper, and compare Vanilla and Classic KZ routes.
-      </p>
 
       <MapsBrowser maps={maps} />
     </Shell>
