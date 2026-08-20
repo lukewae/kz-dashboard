@@ -23,12 +23,12 @@ export function LeaderboardTable({
         <thead>
           <tr>
             <th style={{ width: "65px" }}>Rank</th>
-            <th>Player</th>
+            <th style={{ minWidth: "160px" }}>Player</th>
             <th style={{ width: "105px" }}>Time</th>
-            <th style={{ width: "95px" }}>Δ WR</th>
-            <th style={{ width: "90px" }}>Teleports</th>
-            <th style={{ width: "95px" }}>Points</th>
-            <th style={{ width: "220px" }}>Server</th>
+            <th style={{ width: "90px" }}>Δ WR</th>
+            <th style={{ width: "85px" }}>Teleports</th>
+            <th style={{ width: "90px" }}>Points</th>
+            <th style={{ width: "210px" }}>Server</th>
             <th style={{ textAlign: "center", width: "65px", paddingRight: "20px" }}>Replay</th>
           </tr>
         </thead>
@@ -58,7 +58,7 @@ export function LeaderboardTable({
                 >
                   {formatRank(rankNum)}
                 </td>
-                <td>
+                <td style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {cleanPlayerId ? (
                     <Link
                       className={`player-link ${isCurrentUser ? "current-user-link" : ""}`}
@@ -90,7 +90,7 @@ export function LeaderboardTable({
                     ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(points)
                     : "—"}
                 </td>
-                <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <td style={{ maxWidth: "210px", overflow: "hidden", textOverflow: "ellipsis", fontSize: "12.5px" }}>
                   {r.server?.name ?? "—"}
                 </td>
                 <td style={{ textAlign: "center", width: "65px", paddingRight: "20px" }}>

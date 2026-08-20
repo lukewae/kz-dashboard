@@ -211,7 +211,7 @@ export default async function MapPage({
             approvedAt={map.approved_at}
           />
 
-          {/* 4 Sized-Up, Tactile Quick Stat Cards */}
+          {/* 4 Sized-Up, Tactile Quick Stat Cards (Uniform Height & Centered) */}
           <div
             style={{
               display: "grid",
@@ -219,14 +219,14 @@ export default async function MapPage({
               gap: "12px",
             }}
           >
-            <div className="stat-card" style={{ padding: "16px 18px", minHeight: "76px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
+            <div className="stat-card" style={{ padding: "12px 16px", height: "82px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
               <span className="stat-label" style={{ fontSize: "10.5px", letterSpacing: "0.06em" }}>World Record</span>
-              <span className="stat-value" style={{ color: "rgb(251, 191, 36)", fontSize: "18px", fontWeight: 800 }}>
+              <span className="stat-value" style={{ color: "rgb(251, 191, 36)", fontSize: "17px", fontWeight: 800 }}>
                 {formatTime(wrRecord?.time)}
               </span>
             </div>
 
-            <div className="stat-card" style={{ padding: "16px 18px", minHeight: "76px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
+            <div className="stat-card" style={{ padding: "12px 16px", height: "82px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
               <span className="stat-label" style={{ fontSize: "10.5px", letterSpacing: "0.06em" }}>WR Holder</span>
               {wrRecord?.player?.id ? (
                 <Link
@@ -256,14 +256,14 @@ export default async function MapPage({
               )}
             </div>
 
-            <div className="stat-card" style={{ padding: "16px 18px", minHeight: "76px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
+            <div className="stat-card" style={{ padding: "12px 16px", height: "82px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
               <span className="stat-label" style={{ fontSize: "10.5px", letterSpacing: "0.06em" }}>Total Times</span>
-              <span className="stat-value" style={{ fontSize: "18px", fontWeight: 800 }}>
+              <span className="stat-value" style={{ fontSize: "17px", fontWeight: 800 }}>
                 {records.total}
               </span>
             </div>
 
-            <div className="stat-card" style={{ padding: "16px 18px", minHeight: "76px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
+            <div className="stat-card" style={{ padding: "12px 16px", height: "82px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "4px" }}>
               <span className="stat-label" style={{ fontSize: "10.5px", letterSpacing: "0.06em" }}>Difficulty</span>
               <span
                 className="stat-value"
@@ -284,7 +284,7 @@ export default async function MapPage({
       </section>
 
       {/* 3. Leaderboard Table Section (Centered & Sized Evenly) */}
-      <div style={{ maxWidth: "1150px", margin: "0 auto", width: "100%" }}>
+      <div style={{ maxWidth: "980px", margin: "0 auto", width: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "12px" }}>
           <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#ffffff", margin: 0, letterSpacing: "-0.01em" }}>
             Leaderboard · {leaderboard === "overall" ? "Overall (Any TP)" : "Pro (0 Teleports)"}
