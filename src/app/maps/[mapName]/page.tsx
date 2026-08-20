@@ -283,17 +283,19 @@ export default async function MapPage({
         </div>
       </section>
 
-      {/* 3. Leaderboard Table Section */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "12px" }}>
-        <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#ffffff", margin: 0, letterSpacing: "-0.01em" }}>
-          Leaderboard · {leaderboard === "overall" ? "Overall (Any TP)" : "Pro (0 Teleports)"}
-        </h2>
-        <span style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text-subtle)" }}>
-          SHOWING {records.values.length} OF {records.total} RECORDS
-        </span>
-      </div>
+      {/* 3. Leaderboard Table Section (Centered & Sized Evenly) */}
+      <div style={{ maxWidth: "1150px", margin: "0 auto", width: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "12px" }}>
+          <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#ffffff", margin: 0, letterSpacing: "-0.01em" }}>
+            Leaderboard · {leaderboard === "overall" ? "Overall (Any TP)" : "Pro (0 Teleports)"}
+          </h2>
+          <span style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text-subtle)" }}>
+            SHOWING {records.values.length} OF {records.total} RECORDS
+          </span>
+        </div>
 
-      <LeaderboardTable records={records.values} type={leaderboard} mode={mode} />
+        <LeaderboardTable records={records.values} type={leaderboard} mode={mode} />
+      </div>
     </Shell>
   );
 }

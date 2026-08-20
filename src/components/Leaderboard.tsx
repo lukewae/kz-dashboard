@@ -22,14 +22,14 @@ export function LeaderboardTable({
       <table className="records-table">
         <thead>
           <tr>
-            <th>Rank</th>
-            <th style={{ width: "100%", minWidth: "160px" }}>Player</th>
-            <th>Time</th>
-            <th>Δ WR</th>
-            <th>Teleports</th>
-            <th>Points</th>
-            <th style={{ width: "200px", minWidth: "180px" }}>Server</th>
-            <th style={{ textAlign: "center", width: "70px", minWidth: "70px", paddingRight: "22px" }}>Replay</th>
+            <th style={{ width: "65px" }}>Rank</th>
+            <th>Player</th>
+            <th style={{ width: "105px" }}>Time</th>
+            <th style={{ width: "95px" }}>Δ WR</th>
+            <th style={{ width: "90px" }}>Teleports</th>
+            <th style={{ width: "95px" }}>Points</th>
+            <th style={{ width: "220px" }}>Server</th>
+            <th style={{ textAlign: "center", width: "65px", paddingRight: "20px" }}>Replay</th>
           </tr>
         </thead>
         <tbody>
@@ -90,10 +90,10 @@ export function LeaderboardTable({
                     ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(points)
                     : "—"}
                 </td>
-                <td style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {r.server?.name ?? "—"}
                 </td>
-                <td style={{ textAlign: "center", width: "70px", minWidth: "70px", paddingRight: "22px" }}>
+                <td style={{ textAlign: "center", width: "65px", paddingRight: "20px" }}>
                   {r.replay_available ? (
                     <a
                       href={`https://demo.kzcomp.com/watch?ids=${encodeURIComponent(r.id)}`}
