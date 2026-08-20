@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDifference, formatRank, formatTime, getRankColor, sanitizeSteamId } from "@/lib/format";
 import { KzRecord, Leaderboard, Mode } from "@/lib/types";
@@ -16,6 +18,35 @@ export function LeaderboardTable({
 }) {
   const { userSteamId } = useUserSteamId();
   const wr = records[0]?.time;
+  const [avatarsMap, setAvatarsMap] = useState<Record<string, string>>({});
+
+  const visibleSteamIds = useMemo(() => {
+    const ids = new Set<string>();
+    records.slice(0, 100).forEach((r) => {
+      if (r.player?.id) ids.add(sanitizeSteamId(r.player.id));
+    });
+    return Array.from(ids);
+  }, [records]);
+
+  useEffect(() => {
+    if (visibleSteamIds.length === 0) return;
+    let isMounted = true;
+
+    fetch(`/api/cs2kz/avatars?steamids=${encodeURIComponent(visibleSteamIds.join(","))}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data && typeof data === "object") {
+          setAvatarsMap((prev) => ({ ...prev, ...data }));
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch leaderboard steam avatars:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [visibleSteamIds]);
 
   return (
     <div className="table-container">
@@ -23,7 +54,7 @@ export function LeaderboardTable({
         <thead>
           <tr>
             <th style={{ width: "65px" }}>Rank</th>
-            <th style={{ minWidth: "160px" }}>Player</th>
+            <th style={{ minWidth: "190px" }}>Player</th>
             <th style={{ width: "105px" }}>Time</th>
             <th style={{ width: "90px" }}>Δ WR</th>
             <th style={{ width: "85px" }}>Teleports</th>
@@ -43,6 +74,8 @@ export function LeaderboardTable({
               !!userSteamId &&
               !!cleanPlayerId &&
               cleanPlayerId.toLowerCase() === userSteamId.toLowerCase();
+            const avatarUrl = cleanPlayerId ? avatarsMap[cleanPlayerId] : null;
+            const displayName = r.player?.name ?? cleanPlayerId ?? "Unknown";
 
             return (
               <tr
@@ -58,15 +91,43 @@ export function LeaderboardTable({
                 >
                   {formatRank(rankNum)}
                 </td>
-                <td style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <td>
                   {cleanPlayerId ? (
                     <Link
                       className={`player-link ${isCurrentUser ? "current-user-link" : ""}`}
                       href={`/profile/${cleanPlayerId}?mode=${mode}&leaderboard=${type}`}
-                      title={`View ${r.player?.name}'s profile`}
+                      title={`View ${displayName}'s profile`}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "9px" }}
                     >
-                      <strong style={{ color: isCurrentUser ? "var(--user-blue)" : undefined }}>
-                        {r.player?.name ?? "Unknown"}
+                      <div
+                        style={{
+                          width: "24px",
+                          height: "24px",
+                          borderRadius: "4px",
+                          overflow: "hidden",
+                          background: "#18181c",
+                          border: "1px solid var(--border)",
+                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt=""
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span style={{ fontSize: "10px", fontFamily: "monospace", color: "var(--text-subtle)", fontWeight: 700 }}>
+                            {displayName.slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+
+                      <strong style={{ color: isCurrentUser ? "var(--user-blue)" : undefined, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "160px" }}>
+                        {displayName}
                       </strong>
                       {isCurrentUser && (
                         <span className="current-user-tag">
@@ -75,7 +136,25 @@ export function LeaderboardTable({
                       )}
                     </Link>
                   ) : (
-                    <strong>{r.player?.name ?? "Unknown"}</strong>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "9px" }}>
+                      <div
+                        style={{
+                          width: "24px",
+                          height: "24px",
+                          borderRadius: "4px",
+                          background: "#18181c",
+                          border: "1px solid var(--border)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "10px",
+                          color: "var(--text-subtle)",
+                        }}
+                      >
+                        KZ
+                      </div>
+                      <strong>{displayName}</strong>
+                    </div>
                   )}
                 </td>
                 <td className="mono" style={{ color: isCurrentUser ? "var(--user-blue)" : "#ffffff", fontWeight: 600 }}>
