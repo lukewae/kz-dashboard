@@ -1207,9 +1207,36 @@ export function OverviewDashboard({
                         )}
                       </div>
 
-                      <span className="mono" style={{ fontSize: "11px", color: "var(--text-subtle)", flexShrink: 0 }}>
-                        {relativeTime}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                        {r.replay_available && (
+                          <a
+                            href={`https://demo.kzcomp.com/watch?ids=${encodeURIComponent(r.id)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="replay-watch-btn"
+                            title="Watch 3D Web Replay ↗"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <svg
+                              width="15"
+                              height="15"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M23 7l-7 5 7 5V7z" fill="currentColor" />
+                              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                            </svg>
+                          </a>
+                        )}
+
+                        <span className="mono" style={{ fontSize: "11px", color: "var(--text-subtle)", flexShrink: 0 }}>
+                          {relativeTime}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

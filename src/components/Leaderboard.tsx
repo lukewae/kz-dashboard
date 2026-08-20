@@ -93,11 +93,31 @@ export function LeaderboardTable({
                 <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {r.server?.name ?? "—"}
                 </td>
-                <td className="mono">
+                <td style={{ textAlign: "center", width: "50px" }}>
                   {r.replay_available ? (
-                    <span style={{ color: "var(--text)", fontSize: "11px" }}>YES</span>
+                    <a
+                      href={`https://demo.kzcomp.com/watch?ids=${encodeURIComponent(r.id)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="replay-watch-btn"
+                      title="Watch 3D Web Replay ↗"
+                    >
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M23 7l-7 5 7 5V7z" fill="currentColor" />
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                      </svg>
+                    </a>
                   ) : (
-                    <span style={{ color: "var(--text-subtle)", fontSize: "11px" }}>NO</span>
+                    <span style={{ color: "var(--text-subtle)", fontSize: "12px" }}>—</span>
                   )}
                 </td>
               </tr>
