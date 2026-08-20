@@ -710,7 +710,7 @@ export function ProfileBrowser({
                   </div>
                 </th>
                 <th>Type</th>
-                <th className="sortable-th" onClick={() => handleSort("map")} title="Sort by Map Name">
+                <th className="sortable-th" onClick={() => handleSort("map")} title="Sort by Map Name" style={{ width: "100%", minWidth: "160px" }}>
                   <div className="th-content">
                     <span>Map</span>
                     <span className={`sort-arrow ${sortColumn === "map" ? "active" : ""}`}>
@@ -744,8 +744,8 @@ export function ProfileBrowser({
                   </div>
                 </th>
                 <th>TPs</th>
-                <th>Server</th>
-                <th style={{ textAlign: "center", width: "60px" }}>Replay</th>
+                <th style={{ width: "200px", minWidth: "180px" }}>Server</th>
+                <th style={{ textAlign: "center", width: "70px", minWidth: "70px", paddingRight: "22px" }}>Replay</th>
               </tr>
             </thead>
             <tbody>
@@ -825,10 +825,10 @@ export function ProfileBrowser({
                         : "—"}
                     </td>
                     <td className="mono" style={{ color: "var(--text-subtle)" }}>{r.teleports ?? 0}</td>
-                    <td style={{ maxWidth: "320px", overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-subtle)", fontSize: "12px" }}>
+                    <td style={{ maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-subtle)", fontSize: "12px" }}>
                       {r.server?.name ?? "—"}
                     </td>
-                    <td style={{ textAlign: "center", width: "60px" }}>
+                    <td style={{ textAlign: "center", width: "70px", minWidth: "70px", paddingRight: "22px" }}>
                       {r.replay_available ? (
                         <a
                           href={`https://demo.kzcomp.com/watch?ids=${encodeURIComponent(r.id)}`}
