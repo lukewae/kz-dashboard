@@ -967,6 +967,11 @@ select:focus-visible {
   vertical-align: middle;
 }
 
+.records-table th:last-child,
+.records-table td:last-child {
+  padding-right: 22px;
+}
+
 .records-table tr:last-child td {
   border-bottom: none;
 }

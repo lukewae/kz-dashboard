@@ -745,7 +745,7 @@ export function ProfileBrowser({
                 </th>
                 <th>TPs</th>
                 <th>Server</th>
-                <th>Replay</th>
+                <th style={{ textAlign: "center", width: "60px" }}>Replay</th>
               </tr>
             </thead>
             <tbody>
@@ -825,10 +825,10 @@ export function ProfileBrowser({
                         : "—"}
                     </td>
                     <td className="mono" style={{ color: "var(--text-subtle)" }}>{r.teleports ?? 0}</td>
-                    <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-subtle)", fontSize: "12px" }}>
+                    <td style={{ maxWidth: "320px", overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-subtle)", fontSize: "12px" }}>
                       {r.server?.name ?? "—"}
                     </td>
-                    <td style={{ textAlign: "center", width: "50px" }}>
+                    <td style={{ textAlign: "center", width: "60px" }}>
                       {r.replay_available ? (
                         <a
                           href={`https://demo.kzcomp.com/watch?ids=${encodeURIComponent(r.id)}`}

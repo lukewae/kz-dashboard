@@ -29,7 +29,7 @@ export function LeaderboardTable({
             <th>Teleports</th>
             <th>Points</th>
             <th>Server</th>
-            <th>Replay</th>
+            <th style={{ textAlign: "center", width: "60px" }}>Replay</th>
           </tr>
         </thead>
         <tbody>
@@ -90,10 +90,10 @@ export function LeaderboardTable({
                     ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(points)
                     : "—"}
                 </td>
-                <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <td style={{ maxWidth: "320px", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {r.server?.name ?? "—"}
                 </td>
-                <td style={{ textAlign: "center", width: "50px" }}>
+                <td style={{ textAlign: "center", width: "60px" }}>
                   {r.replay_available ? (
                     <a
                       href={`https://demo.kzcomp.com/watch?ids=${encodeURIComponent(r.id)}`}
