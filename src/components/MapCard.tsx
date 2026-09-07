@@ -60,6 +60,7 @@ export function MapCard({
       {/* Thumbnail */}
       <Link
         href={`/maps/${encodeURIComponent(map.name)}?mode=${mode}`}
+        prefetch={false}
         className="map-card-thumb-wrap"
         style={{ display: "block", textDecoration: "none" }}
       >
@@ -120,6 +121,7 @@ export function MapCard({
         <div>
           <Link
             href={`/maps/${encodeURIComponent(map.name)}?mode=${mode}`}
+            prefetch={false}
             className="map-card-title hover-underline"
             style={{ textDecoration: "none", color: "#ffffff", display: "block" }}
           >
@@ -148,6 +150,7 @@ export function MapCard({
                 <Link
                   key={cm.course.name}
                   href={`/maps/${encodeURIComponent(map.name)}?course=${encodeURIComponent(cm.course.name)}&mode=${mode}`}
+                  prefetch={false}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",

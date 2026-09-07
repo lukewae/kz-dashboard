@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useUserSteamId } from "@/lib/useUserSteamId";
 import { sanitizeSteamId } from "@/lib/format";
 import { getCachedUserProfile, setCachedUserProfile } from "@/lib/userProfileCache";
+import { getPlayerSummaryDirect } from "@/lib/clientCs2kz";
 
 export function UserSteamInput() {
   const { userSteamId, saveSteamId, clearSteamId } = useUserSteamId();
@@ -41,8 +42,7 @@ export function UserSteamInput() {
 
     let isMounted = true;
 
-    fetch(`/api/cs2kz/player-summary?steamId=${encodeURIComponent(cleanId)}`)
-      .then((res) => (res.ok ? res.json() : null))
+    getPlayerSummaryDirect(cleanId)
       .then((data) => {
         if (!isMounted || !data) return;
         const name = data.steamProfile?.name || data.player?.name || null;
@@ -54,8 +54,8 @@ export function UserSteamInput() {
             steamId: cleanId,
             name,
             avatarUrl,
-            ckz_rating: data.player?.ckz_rating,
-            vnl_rating: data.player?.vnl_rating,
+            ckz_rating: data.player?.ckz_rating ?? undefined,
+            vnl_rating: data.player?.vnl_rating ?? undefined,
             first_joined_at: data.player?.first_joined_at,
           });
         }
@@ -124,6 +124,7 @@ export function UserSteamInput() {
         {/* Clickable Profile Card */}
         <Link
           href={`/profile/${encodeURIComponent(userSteamId)}`}
+          prefetch={false}
           style={{
             display: "flex",
             alignItems: "center",

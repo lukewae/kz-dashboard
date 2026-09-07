@@ -11,6 +11,7 @@ import { CountryFlag, formatLocation, normalizeServerGeo, ServerMapThumb } from 
 import { MapRoulette } from "@/components/MapRoulette";
 import { PlayerActivityWidget } from "@/components/PlayerActivityWidget";
 import { getCachedUserProfile, setCachedUserProfile } from "@/lib/userProfileCache";
+import { getPlayerRecordsDirect, getPlayerSummaryDirect, getSteamAvatarsDirect } from "@/lib/clientCs2kz";
 
 export function OverviewDashboard({
   mode,
@@ -100,14 +101,14 @@ export function OverviewDashboard({
   useEffect(() => {
     if (visibleSteamIds.length === 0) return;
 
-    fetch(`/api/cs2kz/avatars?steamids=${encodeURIComponent(visibleSteamIds.join(","))}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          setAvatarsMap((prev) => ({ ...prev, ...data }));
-        }
-      })
+    let isMounted = true;
+    getSteamAvatarsDirect(visibleSteamIds, (data) => {
+      if (isMounted) setAvatarsMap((prev) => ({ ...prev, ...data }));
+    })
       .catch((err) => console.error("Failed to load avatars:", err));
+    return () => {
+      isMounted = false;
+    };
   }, [visibleSteamIds]);
 
   // Fetch tracked user summary dynamically (with instant cache fill)
@@ -141,8 +142,7 @@ export function OverviewDashboard({
     let isMounted = true;
     setCurrentUserData((prev) => ({ ...prev, loading: true }));
 
-    fetch(`/api/cs2kz/player-summary?steamId=${encodeURIComponent(cleanId)}`)
-      .then((res) => (res.ok ? res.json() : null))
+    getPlayerSummaryDirect(cleanId)
       .then((data) => {
         if (!isMounted) return;
         if (data) {
@@ -159,8 +159,8 @@ export function OverviewDashboard({
               steamId: cleanId,
               name,
               avatarUrl,
-              ckz_rating: data.player?.ckz_rating,
-              vnl_rating: data.player?.vnl_rating,
+              ckz_rating: data.player?.ckz_rating ?? undefined,
+              vnl_rating: data.player?.vnl_rating ?? undefined,
               first_joined_at: data.player?.first_joined_at,
             });
           }
@@ -188,15 +188,10 @@ export function OverviewDashboard({
     let isMounted = true;
     setUserRecordsLoading(true);
 
-    fetch(`/api/cs2kz/records?player=${encodeURIComponent(userSteamId)}&mode=${mode}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
+    getPlayerRecordsDirect(userSteamId, mode)
+      .then((records) => {
         if (!isMounted) return;
-        if (data?.records) {
-          setUserRecords(data.records);
-        } else {
-          setUserRecords([]);
-        }
+        setUserRecords(records);
         setUserRecordsLoading(false);
       })
       .catch((err) => {
@@ -438,12 +433,14 @@ export function OverviewDashboard({
             <Link
               className={`pill-btn ${mode === "classic" ? "active" : ""}`}
               href="/?mode=classic"
+              prefetch={false}
             >
               CLASSIC (CKZ)
             </Link>
             <Link
               className={`pill-btn ${mode === "vanilla" ? "active" : ""}`}
               href="/?mode=vanilla"
+              prefetch={false}
             >
               VANILLA (VNL)
             </Link>
@@ -453,6 +450,7 @@ export function OverviewDashboard({
           {userSteamId && (
             <Link
               href={`/profile/${encodeURIComponent(userSteamId)}?mode=${mode}`}
+              prefetch={false}
               className="btn-minimal"
               style={{
                 background: "var(--user-blue)",
@@ -568,6 +566,7 @@ export function OverviewDashboard({
                 </span>
                 <Link
                   href={`/profile/${encodeURIComponent(userSteamId)}?mode=${mode}`}
+                  prefetch={false}
                   style={{ fontSize: "11px", color: "var(--user-blue)", textDecoration: "none", fontFamily: "monospace", fontWeight: 600 }}
                   className="hover-underline"
                   onClick={(e) => e.stopPropagation()}
@@ -658,6 +657,7 @@ export function OverviewDashboard({
                       <Link
                         key={course.id}
                         href={`/maps/${encodeURIComponent(course.mapName)}?course=${encodeURIComponent(course.courseName)}&mode=${mode}`}
+                        prefetch={false}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -888,6 +888,7 @@ export function OverviewDashboard({
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
                             <Link
                               href={`/servers/${server.id}`}
+                              prefetch={false}
                               style={{
                                 fontSize: "13px",
                                 fontWeight: 700,
@@ -923,7 +924,7 @@ export function OverviewDashboard({
                             <CountryFlag countryCode={normalized.countryCode} size="sm" />
                             <span style={{ fontWeight: 600 }}>{formatLocation(normalized.countryCode, normalized.region)}</span>
                             <span>•</span>
-                            <Link href={`/servers/${server.id}`} style={{ color: "var(--user-blue)", textDecoration: "none" }} className="hover-underline" title="View server details">
+                            <Link href={`/servers/${server.id}`} prefetch={false} style={{ color: "var(--user-blue)", textDecoration: "none" }} className="hover-underline" title="View server details">
                               {currentMap}
                             </Link>
                           </div>
@@ -1078,6 +1079,7 @@ export function OverviewDashboard({
                   {/* Left Side: Map Thumbnail Image */}
                   <Link
                     href={`/maps/${encodeURIComponent(mapName)}?course=${encodeURIComponent(courseName)}&mode=${mode}`}
+                    prefetch={false}
                     style={{
                       width: "96px",
                       height: "54px",
@@ -1118,6 +1120,7 @@ export function OverviewDashboard({
 
                         <Link
                           href={`/maps/${encodeURIComponent(mapName)}?course=${encodeURIComponent(courseName)}&mode=${mode}`}
+                          prefetch={false}
                           style={{
                             color: "#ffffff",
                             fontWeight: 700,
@@ -1197,6 +1200,7 @@ export function OverviewDashboard({
                           <Link
                             className={`player-link ${isCurrentUser ? "current-user-link" : ""}`}
                             href={`/profile/${cleanPlayerId}?mode=${mode}`}
+                            prefetch={false}
                             style={{ fontSize: "12px", fontWeight: 600 }}
                           >
                             {r.player?.name || cleanPlayerId}
@@ -1300,6 +1304,7 @@ export function OverviewDashboard({
                   {/* Left Side: Player Steam Avatar (Clean Square) */}
                   <Link
                     href={`/profile/${cleanPlayerId}?mode=${mode}`}
+                    prefetch={false}
                     style={{
                       width: "54px",
                       height: "54px",
@@ -1357,6 +1362,7 @@ export function OverviewDashboard({
                         <Link
                           className={`player-link ${isCurrentUser ? "current-user-link" : ""}`}
                           href={`/profile/${cleanPlayerId}?mode=${mode}`}
+                          prefetch={false}
                           style={{
                             color: "#ffffff",
                             fontWeight: 700,

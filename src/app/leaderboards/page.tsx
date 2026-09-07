@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import { Shell } from "@/components/Shell";
 import { cs2kzProvider } from "@/lib/providers/cs2kz";
 import { Mode } from "@/lib/types";
 import { LeaderboardsBrowser } from "@/components/LeaderboardsBrowser";
@@ -28,7 +27,7 @@ export default async function LeaderboardsPage({ searchParams }: PageProps) {
   ]);
 
   return (
-    <Shell>
+    <>
       <div className="page-eyebrow">CS2KZ // GLOBAL LEADERBOARDS</div>
       <h1 className="page-title">Leaderboards</h1>
 
@@ -38,6 +37,6 @@ export default async function LeaderboardsPage({ searchParams }: PageProps) {
         allMaps={allMaps}
         mode={mode}
       />
-    </Shell>
+    </>
   );
 }

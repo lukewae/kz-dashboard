@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Shell } from "@/components/Shell";
 import { MapControls } from "@/components/MapControls";
 import { LeaderboardTable } from "@/components/Leaderboard";
 import { MapArtwork } from "@/components/MapArtwork";
@@ -33,14 +32,14 @@ export default async function MapPage({
 
   if (!selectedCourse) {
     return (
-      <Shell>
+      <>
         <div className="page-eyebrow">ERROR</div>
         <h1 className="page-title">No Courses Found</h1>
         <p className="page-desc">This map does not have any registered courses.</p>
         <Link className="btn-minimal" href="/maps">
           ← Back to Maps
         </Link>
-      </Shell>
+      </>
     );
   }
 
@@ -77,7 +76,7 @@ export default async function MapPage({
   const wrRecord = records.values[0];
 
   return (
-    <Shell>
+    <>
       {/* 1. Top Breadcrumb & Action Links */}
       <div
         style={{
@@ -231,6 +230,7 @@ export default async function MapPage({
               {wrRecord?.player?.id ? (
                 <Link
                   href={`/profile/${encodeURIComponent(wrRecord.player.id)}?mode=${mode}`}
+                  prefetch={false}
                   className="stat-value hover-underline"
                   style={{
                     fontSize: "15px",
@@ -296,6 +296,6 @@ export default async function MapPage({
 
         <LeaderboardTable records={records.values} type={leaderboard} mode={mode} />
       </div>
-    </Shell>
+    </>
   );
 }

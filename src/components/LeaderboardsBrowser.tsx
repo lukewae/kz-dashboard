@@ -6,6 +6,7 @@ import Link from "next/link";
 import { formatRank, getPlayerRank, getRankColor, sanitizeSteamId } from "@/lib/format";
 import { KzMap, KzPlayer, KzRecord, Mode } from "@/lib/types";
 import { useUserSteamId } from "@/lib/useUserSteamId";
+import { getSteamAvatarsDirect } from "@/lib/clientCs2kz";
 
 interface TopWRPlayer {
   id: string;
@@ -112,13 +113,9 @@ export function LeaderboardsBrowser({
     if (visibleSteamIds.length === 0) return;
     let isMounted = true;
 
-    fetch(`/api/cs2kz/avatars?steamids=${encodeURIComponent(visibleSteamIds.join(","))}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (isMounted && data && typeof data === "object") {
-          setAvatarsMap((prev) => ({ ...prev, ...data }));
-        }
-      })
+    getSteamAvatarsDirect(visibleSteamIds, (data) => {
+      if (isMounted) setAvatarsMap((prev) => ({ ...prev, ...data }));
+    })
       .catch((err) => {
         console.error("Failed to fetch steam avatars:", err);
       });
@@ -148,12 +145,14 @@ export function LeaderboardsBrowser({
             <Link
               className={`pill-btn ${mode === "classic" ? "active" : ""}`}
               href="/leaderboards?mode=classic"
+              prefetch={false}
             >
               CLASSIC (CKZ)
             </Link>
             <Link
               className={`pill-btn ${mode === "vanilla" ? "active" : ""}`}
               href="/leaderboards?mode=vanilla"
+              prefetch={false}
             >
               VANILLA (VNL)
             </Link>
@@ -311,6 +310,7 @@ export function LeaderboardsBrowser({
                         <Link
                           className={`player-link ${isCurrentUser ? "current-user-link" : ""}`}
                           href={`/profile/${cleanPlayerId}?mode=${mode}`}
+                          prefetch={false}
                           style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}
                         >
                           <div
@@ -463,6 +463,7 @@ export function LeaderboardsBrowser({
                         <Link
                           className={`player-link ${isCurrentUser ? "current-user-link" : ""}`}
                           href={`/profile/${cleanWrId}?mode=${mode}`}
+                          prefetch={false}
                           style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}
                         >
                           <div
@@ -514,6 +515,7 @@ export function LeaderboardsBrowser({
                       <td style={{ textAlign: "center" }}>
                         <Link
                           href={`/profile/${cleanWrId}?mode=${mode}`}
+                          prefetch={false}
                           className="btn-minimal"
                           style={{ padding: "2px 8px", fontSize: "11px", display: "inline-block" }}
                         >

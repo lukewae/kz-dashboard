@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Shell } from "@/components/Shell";
 import { cs2kzProvider } from "@/lib/providers/cs2kz";
 import { formatDate, getPlayerRank, sanitizeSteamId } from "@/lib/format";
 import { Leaderboard, Mode } from "@/lib/types";
@@ -70,7 +69,7 @@ export default async function ProfilePage({
   const profileUrl = steamProfile?.profile_url;
 
   return (
-    <Shell>
+    <>
       {/* Breadcrumbs */}
       <div className="page-eyebrow">
         <Link href="/maps" style={{ textDecoration: "underline" }}>
@@ -192,6 +191,6 @@ export default async function ProfilePage({
         overallRank={overallRank}
         wrLeaderboardRank={wrLeaderboardRank}
       />
-    </Shell>
+    </>
   );
 }

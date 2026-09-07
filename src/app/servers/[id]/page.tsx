@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Shell } from "@/components/Shell";
 import { ServerDetailsClient } from "@/components/ServerDetailsClient";
 import { cs2kzProvider } from "@/lib/providers/cs2kz";
 import { queryServerPlayers } from "@/lib/a2s";
@@ -63,7 +62,7 @@ export default async function ServerDetailPage({
     : null;
 
   return (
-    <Shell>
+    <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
         <div className="page-eyebrow" style={{ margin: 0 }}>
           GLOBAL NETWORK // SERVER DETAILS
@@ -90,6 +89,6 @@ export default async function ServerDetailPage({
       </h1>
 
       <ServerDetailsClient server={server} mapData={mapData} initialPlayerData={initialPlayerData} />
-    </Shell>
+    </>
   );
 }

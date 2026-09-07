@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { Shell } from "@/components/Shell";
 
 export default function NotFound() {
   return (
-    <Shell>
+    <>
       <div className="page-eyebrow">404 // NOT FOUND</div>
       <h1 className="page-title">Page Not Found</h1>
       <p className="page-desc">
@@ -17,6 +16,6 @@ export default function NotFound() {
           Dashboard Home
         </Link>
       </div>
-    </Shell>
+    </>
   );
 }

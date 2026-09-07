@@ -637,6 +637,7 @@ export function MapRoulette({
             {selectedCandidate && !isRolling && (
               <Link
                 href={`/maps/${encodeURIComponent(selectedCandidate.mapName)}?course=${encodeURIComponent(selectedCandidate.courseName)}&mode=${mode}&leaderboard=${runType === "pro" ? "pro" : "overall"}`}
+                prefetch={false}
                 className="btn-minimal"
                 style={{
                   background: "rgba(255, 255, 255, 0.06)",

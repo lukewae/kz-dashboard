@@ -6,6 +6,7 @@ import Link from "next/link";
 import { formatDifference, formatRank, formatTime, getRankColor, sanitizeSteamId } from "@/lib/format";
 import { KzRecord, Leaderboard, Mode } from "@/lib/types";
 import { useUserSteamId } from "@/lib/useUserSteamId";
+import { getSteamAvatarsDirect } from "@/lib/clientCs2kz";
 
 export function LeaderboardTable({
   records,
@@ -32,13 +33,9 @@ export function LeaderboardTable({
     if (visibleSteamIds.length === 0) return;
     let isMounted = true;
 
-    fetch(`/api/cs2kz/avatars?steamids=${encodeURIComponent(visibleSteamIds.join(","))}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (isMounted && data && typeof data === "object") {
-          setAvatarsMap((prev) => ({ ...prev, ...data }));
-        }
-      })
+    getSteamAvatarsDirect(visibleSteamIds, (data) => {
+      if (isMounted) setAvatarsMap((prev) => ({ ...prev, ...data }));
+    })
       .catch((err) => {
         console.error("Failed to fetch leaderboard steam avatars:", err);
       });
@@ -96,6 +93,7 @@ export function LeaderboardTable({
                     <Link
                       className={`player-link ${isCurrentUser ? "current-user-link" : ""}`}
                       href={`/profile/${cleanPlayerId}?mode=${mode}&leaderboard=${type}`}
+                      prefetch={false}
                       title={`View ${displayName}'s profile`}
                       style={{ display: "inline-flex", alignItems: "center", gap: "9px" }}
                     >

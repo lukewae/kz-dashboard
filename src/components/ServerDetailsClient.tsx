@@ -113,8 +113,17 @@ export function ServerDetailsClient({
     if (!initialPlayerData) {
       fetchPlayers();
     }
-    const interval = setInterval(fetchPlayers, 20000); // 20s auto refresh
-    return () => clearInterval(interval);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void fetchPlayers();
+      }
+    };
+    const interval = window.setInterval(refreshWhenVisible, 60000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [server.id]);
 
   const handleCopy = () => {
@@ -411,6 +420,7 @@ export function ServerDetailsClient({
             {mapData && (
               <Link
                 href={`/maps/${encodeURIComponent(mapData.name)}`}
+                prefetch={false}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",

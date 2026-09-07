@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Shell } from "@/components/Shell";
 
 export const metadata: Metadata = {
   title: "CS2KZ Viewer",
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><Shell>{children}</Shell></body>
     </html>
   );
 }

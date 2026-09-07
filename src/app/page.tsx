@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import { Shell } from "@/components/Shell";
 import { cs2kzProvider } from "@/lib/providers/cs2kz";
 import { Mode } from "@/lib/types";
 import { OverviewDashboard } from "@/components/OverviewDashboard";
@@ -29,15 +28,13 @@ export default async function Home({ searchParams }: PageProps) {
   ]);
 
   return (
-    <Shell>
-      <OverviewDashboard
-        mode={mode}
-        recentWrs={allWorldRecords}
-        topPointsPlayers={topPlayersData.values}
-        allWorldRecords={allWorldRecords}
-        allMaps={allMaps}
-        allServers={allServers}
-      />
-    </Shell>
+    <OverviewDashboard
+      mode={mode}
+      recentWrs={allWorldRecords}
+      topPointsPlayers={topPlayersData.values}
+      allWorldRecords={allWorldRecords}
+      allMaps={allMaps}
+      allServers={allServers}
+    />
   );
 }

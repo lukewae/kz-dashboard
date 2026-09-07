@@ -380,6 +380,7 @@ export function PlayerActivityWidget({
           {userSteamId && (
             <Link
               href={`/profile/${encodeURIComponent(userSteamId)}?mode=${mode}`}
+              prefetch={false}
               style={{ fontSize: "10.5px", color: "var(--user-blue)", textDecoration: "none", fontFamily: "monospace" }}
               className="hover-underline"
             >
@@ -406,6 +407,7 @@ export function PlayerActivityWidget({
                 <Link
                   key={r.id}
                   href={`/maps/${encodeURIComponent(mapName)}?course=${encodeURIComponent(courseName)}&mode=${mode}`}
+                  prefetch={false}
                   style={{
                     display: "flex",
                     alignItems: "center",

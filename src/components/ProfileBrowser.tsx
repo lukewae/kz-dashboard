@@ -324,12 +324,14 @@ export function ProfileBrowser({
             <Link
               className={`pill-btn ${mode === "classic" ? "active" : ""}`}
               href={`/profile/${steamId}?mode=classic&leaderboard=${leaderboard}`}
+              prefetch={false}
             >
               CLASSIC (CKZ)
             </Link>
             <Link
               className={`pill-btn ${mode === "vanilla" ? "active" : ""}`}
               href={`/profile/${steamId}?mode=vanilla&leaderboard=${leaderboard}`}
+              prefetch={false}
             >
               VANILLA (VNL)
             </Link>
@@ -361,12 +363,14 @@ export function ProfileBrowser({
           <Link
             className={`pill-btn ${leaderboard === "overall" ? "active" : ""}`}
             href={`/profile/${steamId}?mode=${mode}&leaderboard=overall`}
+            prefetch={false}
           >
             OVERALL
           </Link>
           <Link
             className={`pill-btn ${leaderboard === "pro" ? "active" : ""}`}
             href={`/profile/${steamId}?mode=${mode}&leaderboard=pro`}
+            prefetch={false}
           >
             PRO (NO TP)
           </Link>
@@ -795,6 +799,7 @@ export function ProfileBrowser({
                     <td>
                       <Link
                         href={`/maps/${encodeURIComponent(mapName)}?course=${encodeURIComponent(courseName)}&mode=${mode}&leaderboard=${leaderboard}`}
+                        prefetch={false}
                         style={{ color: "#ffffff", fontWeight: 600, textDecoration: "underline" }}
                       >
                         {mapName}
@@ -908,6 +913,7 @@ export function ProfileBrowser({
                     <td>
                       <Link
                         href={`/maps/${encodeURIComponent(item.mapName)}?course=${encodeURIComponent(item.courseName)}&mode=${mode}&leaderboard=${leaderboard}`}
+                        prefetch={false}
                         style={{ color: "#ffffff", fontWeight: 600, textDecoration: "underline" }}
                       >
                         {item.mapName}
@@ -932,6 +938,7 @@ export function ProfileBrowser({
                     <td>
                       <Link
                         href={`/maps/${encodeURIComponent(item.mapName)}?course=${encodeURIComponent(item.courseName)}&mode=${mode}&leaderboard=${leaderboard}`}
+                        prefetch={false}
                         className="btn-minimal"
                         style={{ padding: "3px 8px", fontSize: "11px", display: "inline-block" }}
                       >

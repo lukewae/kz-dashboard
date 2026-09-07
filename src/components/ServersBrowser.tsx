@@ -187,6 +187,7 @@ export function ServerMapThumb({
   return (
     <Link
       href={targetHref}
+      prefetch={false}
       style={{
         display: "block",
         position: "relative",
@@ -596,6 +597,7 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
                       <Link
                         href={`/servers/${server.id}`}
+                        prefetch={false}
                         style={{
                           fontSize: "14px",
                           fontWeight: 700,
@@ -660,6 +662,7 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
                       Map:{" "}
                       <Link
                         href={`/servers/${server.id}`}
+                        prefetch={false}
                         style={{ color: "var(--user-blue)", textDecoration: "none", fontWeight: 600 }}
                         className="hover-underline"
                         title="View server details"
@@ -762,6 +765,7 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
 
                   <Link
                     href={`/servers/${server.id}`}
+                    prefetch={false}
                     style={{
                       padding: "6px 10px",
                       fontSize: "11px",

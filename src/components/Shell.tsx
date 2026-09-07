@@ -188,6 +188,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <Link
                 className={`mobile-nav-link ${isProfileActive ? "active" : ""}`}
                 href={`/profile/${encodeURIComponent(userSteamId)}`}
+                prefetch={false}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <span style={{ fontSize: "18px", fontWeight: 700 }}>My Profile</span>
@@ -287,6 +288,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link
               className={`nav-link ${isProfileActive ? "active" : ""}`}
               href={`/profile/${encodeURIComponent(userSteamId)}`}
+              prefetch={false}
             >
               <span>My Profile</span>
             </Link>
