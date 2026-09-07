@@ -45,12 +45,6 @@ npm run build
 npm start
 ```
 
-## Deployment
-
-The project is intended to be deployed on Vercel.
-
-Push the repo to GitHub, import it into Vercel and deploy it as a Next.js project.
-
 ## API
 
 CS2 data currently comes from the public CS2KZ API:
