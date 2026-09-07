@@ -100,10 +100,10 @@ export function LeaderboardsBrowser({
   // Steam IDs to fetch avatars for (visible across both tables)
   const visibleSteamIds = useMemo(() => {
     const ids = new Set<string>();
-    filteredRatingPlayers.slice(0, 100).forEach((p) => {
+    filteredRatingPlayers.slice(0, 50).forEach((p) => {
       if (p.id) ids.add(sanitizeSteamId(p.id));
     });
-    filteredWrHolders.slice(0, 100).forEach((p) => {
+    filteredWrHolders.slice(0, 50).forEach((p) => {
       if (p.id) ids.add(sanitizeSteamId(p.id));
     });
     return Array.from(ids);
@@ -331,6 +331,8 @@ export function LeaderboardsBrowser({
                               <img
                                 src={avatarUrl}
                                 alt=""
+                                loading="lazy"
+                                decoding="async"
                                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                               />
                             ) : (
@@ -484,6 +486,8 @@ export function LeaderboardsBrowser({
                               <img
                                 src={avatarUrl}
                                 alt=""
+                                loading="lazy"
+                                decoding="async"
                                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                               />
                             ) : (

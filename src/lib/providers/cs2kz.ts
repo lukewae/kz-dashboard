@@ -3,8 +3,11 @@ import { sanitizeSteamId } from "@/lib/format";
 
 const base = process.env.CS2KZ_API_BASE_URL || "https://api.cs2kz.org";
 
-// Memory cache for workshop image URLs
-const workshopImageCache = new Map<number, string>();
+// Workshop previews are stable for a long time. Keep a process-local cache and
+// share an in-flight lookup so concurrent page renders do not duplicate POSTs.
+const WORKSHOP_IMAGE_TTL_MS = 24 * 60 * 60 * 1000;
+const workshopImageCache = new Map<number, { url: string; expiresAt: number }>();
+const workshopImageRequests = new Map<string, Promise<void>>();
 
 async function request<T>(path: string, params: Record<string, string | number | boolean | undefined> = {}): Promise<T> {
   const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
@@ -57,57 +60,58 @@ function validMap(value: unknown): value is KzMap {
  * Resolves high-resolution workshop thumbnail URLs directly from Steam's CDN
  */
 async function attachSteamImages(maps: KzMap[]): Promise<KzMap[]> {
-  const uncachedIds: number[] = [];
-  maps.forEach((m) => {
-    if (m.workshop_id && !workshopImageCache.has(m.workshop_id)) {
-      uncachedIds.push(m.workshop_id);
-    }
-  });
+  const now = Date.now();
+  const uncachedIds = Array.from(
+    new Set(
+      maps
+        .filter((m) => !m.image_url && m.workshop_id)
+        .map((m) => m.workshop_id as number)
+        .filter((id) => {
+          const cached = workshopImageCache.get(id);
+          return !cached || cached.expiresAt <= now;
+        })
+    )
+  );
 
-  if (uncachedIds.length > 0) {
-    try {
-      const postParams = new URLSearchParams();
-      postParams.set("itemcount", String(uncachedIds.length));
-      uncachedIds.forEach((id, idx) => {
-        postParams.set(`publishedfileids[${idx}]`, String(id));
-      });
-
-      const res = await fetch(
-        "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/",
-        {
-          method: "POST",
-          body: postParams,
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          next: { revalidate: 3600 },
-        }
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        const details = data?.response?.publishedfiledetails;
-        if (Array.isArray(details)) {
-          details.forEach((item: { publishedfileid?: string; preview_url?: string }) => {
-            if (item.publishedfileid && item.preview_url) {
-              const idNum = parseInt(item.publishedfileid, 10);
-              if (!Number.isNaN(idNum)) {
-                workshopImageCache.set(idNum, item.preview_url);
-              }
-            }
+  // Steam accepts up to 100 published file IDs per request. A sorted key makes
+  // equivalent concurrent requests share the same promise.
+  for (let start = 0; start < uncachedIds.length; start += 100) {
+    const batch = uncachedIds.slice(start, start + 100).sort((a, b) => a - b);
+    const key = batch.join(",");
+    let request = workshopImageRequests.get(key);
+    if (!request) {
+      request = (async () => {
+        try {
+          const postParams = new URLSearchParams({ itemcount: String(batch.length) });
+          batch.forEach((id, idx) => postParams.set(`publishedfileids[${idx}]`, String(id)));
+          const res = await fetch("https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/", {
+            method: "POST",
+            body: postParams,
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            signal: AbortSignal.timeout(10000),
           });
+          if (!res.ok) return;
+          const data = await res.json();
+          for (const item of data?.response?.publishedfiledetails ?? []) {
+            const id = Number(item?.publishedfileid);
+            if (Number.isFinite(id) && item?.preview_url) {
+              workshopImageCache.set(id, { url: item.preview_url, expiresAt: Date.now() + WORKSHOP_IMAGE_TTL_MS });
+            }
+          }
+        } catch (err) {
+          console.warn("Failed to fetch Steam Workshop images:", err);
         }
-      }
-    } catch (err) {
-      console.warn("Failed to fetch Steam Workshop images:", err);
+      })().finally(() => workshopImageRequests.delete(key));
+      workshopImageRequests.set(key, request);
     }
+    await request;
   }
 
   // Attach resolved image URLs
   return maps.map((m) => ({
     ...m,
     image_url:
-      (m.workshop_id ? workshopImageCache.get(m.workshop_id) : null) ||
+      (m.workshop_id ? workshopImageCache.get(m.workshop_id)?.url : null) ||
       `https://github.com/kzglobalteam/cs2kz-images/raw/public/webp/medium/${encodeURIComponent(m.name)}/1.webp`,
   }));
 }

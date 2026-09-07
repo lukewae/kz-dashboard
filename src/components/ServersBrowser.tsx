@@ -205,6 +205,8 @@ export function ServerMapThumb({
       <img
         src={src}
         alt={mapName}
+        loading="lazy"
+        decoding="async"
         style={{
           width: "100%",
           height: "100%",

@@ -686,6 +686,8 @@ export function OverviewDashboard({
                           <img
                             src={mapImage}
                             alt={course.mapName}
+                            loading="lazy"
+                            decoding="async"
                             style={{
                               width: "100%",
                               height: "100%",
@@ -1095,6 +1097,8 @@ export function OverviewDashboard({
                     <img
                       src={mapImage}
                       alt={mapName}
+                      loading="lazy"
+                      decoding="async"
                       style={{
                         width: "100%",
                         height: "100%",
