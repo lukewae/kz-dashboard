@@ -22,7 +22,7 @@ More features and CS:GO support are planned.
 
 - Next.js
 - TypeScript
-- CSS
+- React
 - CS2KZ API
 
 ## Running locally
