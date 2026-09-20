@@ -528,6 +528,7 @@ export function ServersBrowser({ initialServers }: { initialServers: KzServer[] 
             </button>
           )}
         </div>
+
       </div>
 
       {/* 2. Clean Stats Header */}

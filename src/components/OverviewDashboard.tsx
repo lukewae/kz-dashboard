@@ -11,11 +11,11 @@ import { CountryFlag, formatLocation, normalizeServerGeo, ServerMapThumb } from 
 import { MapRoulette } from "@/components/MapRoulette";
 import { PlayerActivityWidget } from "@/components/PlayerActivityWidget";
 import { getCachedUserProfile, setCachedUserProfile } from "@/lib/userProfileCache";
-import { getPlayerRecordsDirect, getPlayerSummaryDirect, getSteamAvatarsDirect } from "@/lib/clientCs2kz";
+import { getPlayerRecordsDirect, getPlayerSummaryDirect, getRecentWorldRecordsDirect, getSteamAvatarsDirect } from "@/lib/clientCs2kz";
 
 export function OverviewDashboard({
   mode,
-  recentWrs,
+  recentWrs: initialRecentWrs,
   topPointsPlayers,
   allMaps,
   allServers = [],
@@ -23,17 +23,39 @@ export function OverviewDashboard({
   mode: Mode;
   recentWrs: KzRecord[];
   topPointsPlayers: KzPlayer[];
-  allWorldRecords: KzRecord[];
   allMaps: KzMap[];
   allServers?: KzServer[];
 }) {
   const { userSteamId } = useUserSteamId();
+  // Keep the first client render identical to SSR. The tracked ID is restored
+  // from cookie/localStorage only after hydration has completed.
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => setIsHydrated(true), []);
+  const hydratedSteamId = isHydrated ? userSteamId : "";
   const [avatarsMap, setAvatarsMap] = useState<Record<string, string>>({});
+  const [recentWrs, setRecentWrs] = useState(initialRecentWrs);
+  const [recentWrsLoading, setRecentWrsLoading] = useState(initialRecentWrs.length === 0);
   const [userRecords, setUserRecords] = useState<KzRecord[]>([]);
   const [userRecordsLoading, setUserRecordsLoading] = useState(false);
   const { isFavorite, toggleFavorite, favorites } = useFavoriteServers();
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(true);
   const [copiedServerId, setCopiedServerId] = useState<number | null>(null);
+
+  // Recent WRs are useful secondary content, but the upstream endpoint can be
+  // slow. Load it after the page is interactive instead of blocking first paint.
+  useEffect(() => {
+    let active = true;
+    setRecentWrs(initialRecentWrs);
+    setRecentWrsLoading(initialRecentWrs.length === 0);
+    getRecentWorldRecordsDirect(mode, 5).then((records) => {
+      if (!active) return;
+      if (records.length > 0) setRecentWrs(records);
+      setRecentWrsLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [initialRecentWrs, mode]);
 
   const favoriteServersList = useMemo(() => {
     return allServers.filter((s) => isFavorite(s.id));
@@ -55,7 +77,7 @@ export function OverviewDashboard({
     steamProfile: KzSteamProfile | null;
     loading: boolean;
   }>(() => {
-    const cached = getCachedUserProfile(userSteamId);
+    const cached = getCachedUserProfile("");
     if (cached) {
       return {
         player: {
@@ -86,7 +108,7 @@ export function OverviewDashboard({
     const ids = new Set<string>();
     if (userSteamId) ids.add(sanitizeSteamId(userSteamId));
 
-    recentWrs.slice(0, 15).forEach((r) => {
+    recentWrs.slice(0, 5).forEach((r) => {
       if (r.player?.id) ids.add(sanitizeSteamId(r.player.id));
     });
 
@@ -278,14 +300,14 @@ export function OverviewDashboard({
     };
   }, [allMaps, mode, completedCourseKeys]);
 
-  const cachedUser = getCachedUserProfile(userSteamId);
+  const cachedUser = getCachedUserProfile(hydratedSteamId);
   const userRating = mode === "classic"
     ? (currentUserData.player?.ckz_rating ?? cachedUser?.ckz_rating)
     : (currentUserData.player?.vnl_rating ?? cachedUser?.vnl_rating);
   const userRankInfo = getPlayerRank(userRating);
   const nextRankGoal = userRating != null ? getNextPlayerRank(userRating) : null;
-  const userAvatar = currentUserData.steamProfile?.avatar_url || cachedUser?.avatarUrl || (userSteamId ? avatarsMap[sanitizeSteamId(userSteamId)] : null);
-  const userName = currentUserData.steamProfile?.name || currentUserData.player?.name || cachedUser?.name || userSteamId;
+  const userAvatar = isHydrated && (currentUserData.steamProfile?.avatar_url || cachedUser?.avatarUrl || (hydratedSteamId ? avatarsMap[sanitizeSteamId(hydratedSteamId)] : null));
+  const userName = isHydrated && (currentUserData.steamProfile?.name || currentUserData.player?.name || cachedUser?.name || hydratedSteamId);
 
   const formattedPoints =
     userRating != null
@@ -305,7 +327,7 @@ export function OverviewDashboard({
         }}
       >
         {/* Left Side: Avatar + Welcome & Points Stack */}
-        {userSteamId ? (
+        {hydratedSteamId ? (
           <div style={{ display: "flex", alignItems: "center", gap: "20px", minWidth: 0 }}>
             {userAvatar ? (
               <img
@@ -447,9 +469,9 @@ export function OverviewDashboard({
           </div>
 
           {/* Action Button (shown when Steam ID is configured) */}
-          {userSteamId && (
+          {hydratedSteamId && (
             <Link
-              href={`/profile/${encodeURIComponent(userSteamId)}?mode=${mode}`}
+              href={`/profile/${encodeURIComponent(hydratedSteamId)}?mode=${mode}`}
               prefetch={false}
               className="btn-minimal"
               style={{
@@ -483,7 +505,7 @@ export function OverviewDashboard({
             allMaps={allMaps}
             mode={mode}
             userRecords={userRecords}
-            userSteamId={userSteamId}
+            userSteamId={hydratedSteamId}
             mapImageMap={mapImageMap}
           />
         </div>
@@ -492,7 +514,7 @@ export function OverviewDashboard({
         <div style={{ height: "100%" }}>
           <PlayerActivityWidget
             userRecords={userRecords}
-            userSteamId={userSteamId}
+            userSteamId={hydratedSteamId}
             mode={mode}
             mapImageMap={mapImageMap}
           />
@@ -548,7 +570,7 @@ export function OverviewDashboard({
             <h3 style={{ fontSize: "14px", fontWeight: 700, margin: 0, color: "#ffffff", letterSpacing: "0.02em" }}>
               Remaining Incomplete Maps
             </h3>
-            {userSteamId && (
+            {hydratedSteamId && (
               <>
                 <span style={{ fontSize: "12px", color: "var(--text-subtle)" }}>•</span>
                 <span style={{ fontSize: "12.5px", color: "#ffffff", fontWeight: 600, fontFamily: "ui-monospace, monospace" }}>
@@ -559,13 +581,13 @@ export function OverviewDashboard({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            {userSteamId ? (
+            {hydratedSteamId ? (
               <>
                 <span style={{ fontSize: "12px", color: "var(--text-muted)", fontFamily: "ui-monospace, monospace" }}>
                   {incompleteRankedCourses.completed} / {incompleteRankedCourses.total} Completed ({incompleteRankedCourses.percent}%)
                 </span>
                 <Link
-                  href={`/profile/${encodeURIComponent(userSteamId)}?mode=${mode}`}
+                  href={`/profile/${encodeURIComponent(hydratedSteamId)}?mode=${mode}`}
                   prefetch={false}
                   style={{ fontSize: "11px", color: "var(--user-blue)", textDecoration: "none", fontFamily: "monospace", fontWeight: 600 }}
                   className="hover-underline"
@@ -610,7 +632,7 @@ export function OverviewDashboard({
         {isIncompleteOpen && (
           <>
             {/* Progress Bar */}
-            {userSteamId && incompleteRankedCourses.total > 0 && (
+            {hydratedSteamId && incompleteRankedCourses.total > 0 && (
               <div
                 style={{
                   width: "100%",
@@ -633,7 +655,7 @@ export function OverviewDashboard({
             )}
 
             {/* Unfinished Courses Grid */}
-            {userSteamId ? (
+            {hydratedSteamId ? (
               userRecordsLoading ? (
                 <div style={{ padding: "20px 0", textAlign: "center", color: "var(--text-subtle)", fontSize: "12px" }}>
                   Checking map completion status...
@@ -1047,7 +1069,7 @@ export function OverviewDashboard({
 
           {/* Individual Compact WR Cards Stack */}
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {recentWrs.slice(0, 7).map((r) => {
+            {recentWrs.slice(0, 5).map((r) => {
               const mapName = r.map?.name ?? "Unknown Map";
               const courseName = r.course?.name ?? "Main";
               const isPro = r.teleports === 0;
@@ -1059,9 +1081,9 @@ export function OverviewDashboard({
               const relativeTime = formatRelativeTime(recordDate);
               const mapImage = mapImageMap[mapName.toLowerCase()] || getMapImageUrl(mapName);
               const isCurrentUser =
-                !!userSteamId &&
+                !!hydratedSteamId &&
                 !!cleanPlayerId &&
-                cleanPlayerId.toLowerCase() === userSteamId.toLowerCase();
+                cleanPlayerId.toLowerCase() === hydratedSteamId.toLowerCase();
 
               return (
                 <div
@@ -1252,7 +1274,9 @@ export function OverviewDashboard({
             })}
 
             {recentWrs.length === 0 && (
-              <div className="empty-state">No recent records available.</div>
+              <div className="empty-state">
+                {recentWrsLoading ? "Loading recent records…" : "No recent records available."}
+              </div>
             )}
           </div>
         </div>
@@ -1282,8 +1306,8 @@ export function OverviewDashboard({
               const cleanPlayerId = sanitizeSteamId(player.id);
               const playerAvatar = avatarsMap[cleanPlayerId];
               const isCurrentUser =
-                !!userSteamId &&
-                cleanPlayerId.toLowerCase() === userSteamId.toLowerCase();
+                !!hydratedSteamId &&
+                cleanPlayerId.toLowerCase() === hydratedSteamId.toLowerCase();
 
               const formattedPlayerPoints =
                 rating != null

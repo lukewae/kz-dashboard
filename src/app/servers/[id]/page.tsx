@@ -5,7 +5,7 @@ import { ServerDetailsClient } from "@/components/ServerDetailsClient";
 import { cs2kzProvider } from "@/lib/providers/cs2kz";
 import { queryServerPlayers } from "@/lib/a2s";
 
-export const revalidate = 15;
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

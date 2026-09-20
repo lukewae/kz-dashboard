@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatFullTimestamp, formatRank, formatRelativeTime, formatTime, getPlayerRank, getRankColor, getRecordTimestamp, getTierInfo, resolveCanonicalTier, TIER_CONFIG } from "@/lib/format";
 import { KzMap, KzPlayer, KzRecord, Leaderboard, Mode, Tier } from "@/lib/types";
+import { getPlayerRecordsDirect, getProfileRanksDirect } from "@/lib/clientCs2kz";
 
 const TIERS_LIST: { level: number; key: Tier; short: string; label: string; color: string; rgb: string }[] = [
   { level: 1, key: "very-easy", short: "T1", label: "Very Easy", color: "rgb(134, 239, 172)", rgb: "134, 239, 172" },
@@ -29,7 +30,7 @@ interface IncompleteCourseItem {
 
 export function ProfileBrowser({
   player,
-  records,
+  records: initialRecords,
   allMaps,
   steamId,
   mode,
@@ -52,6 +53,35 @@ export function ProfileBrowser({
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortColumn, setSortColumn] = useState<SortColumn>("recent");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [records, setRecords] = useState(initialRecords);
+  const [recordsLoading, setRecordsLoading] = useState(initialRecords.length === 0);
+  const [rankStats, setRankStats] = useState({ overallRank, wrLeaderboardRank });
+
+  useEffect(() => {
+    let active = true;
+    setRecordsLoading(true);
+    getPlayerRecordsDirect(steamId, mode)
+      .then((nextRecords) => {
+        if (active) setRecords(nextRecords);
+      })
+      .finally(() => {
+        if (active) setRecordsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [steamId, mode]);
+
+  useEffect(() => {
+    let active = true;
+    setRankStats({ overallRank, wrLeaderboardRank });
+    getProfileRanksDirect(steamId, mode).then((ranks) => {
+      if (active) setRankStats(ranks);
+    });
+    return () => {
+      active = false;
+    };
+  }, [steamId, mode, overallRank, wrLeaderboardRank]);
 
   const rating = mode === "classic" ? player?.ckz_rating : player?.vnl_rating;
   const rankInfo = getPlayerRank(rating);
@@ -377,6 +407,20 @@ export function ProfileBrowser({
         </div>
       </div>
 
+      {recordsLoading && (
+        <div
+          role="status"
+          style={{
+            margin: "-4px 0 16px",
+            color: "var(--text-subtle)",
+            fontSize: "11px",
+            fontFamily: "ui-monospace, monospace",
+          }}
+        >
+          Loading {mode === "classic" ? "CKZ" : "VNL"} records in the background…
+        </div>
+      )}
+
       {/* 2. Split Overview Section: Tier Breakdown (Left) & 4 Stat Cards in 2x2 Grid (Right) */}
       <div
         className="profile-split-grid"
@@ -551,8 +595,8 @@ export function ProfileBrowser({
           {/* Card 3: Overall Rating Rank */}
           <div className="stat-card">
             <span className="stat-label">Overall Rating Rank</span>
-            <span className="stat-value" style={{ color: overallRank ? rankInfo.color : "var(--text-subtle)" }}>
-              {overallRank ? `#${overallRank}` : "—"}
+            <span className="stat-value" style={{ color: rankStats.overallRank ? rankInfo.color : "var(--text-subtle)" }}>
+              {rankStats.overallRank ? `#${rankStats.overallRank}` : "—"}
             </span>
             <span style={{ fontSize: "11px", color: "var(--text-subtle)", fontFamily: "monospace" }}>
               Global Leaderboard
@@ -562,8 +606,8 @@ export function ProfileBrowser({
           {/* Card 4: WR Leaderboard Rank */}
           <div className="stat-card">
             <span className="stat-label">WR Leaderboard Rank</span>
-            <span className="stat-value" style={{ color: wrLeaderboardRank ? "rgb(250, 204, 21)" : "var(--text-subtle)" }}>
-              {wrLeaderboardRank ? `#${wrLeaderboardRank}` : "—"}
+            <span className="stat-value" style={{ color: rankStats.wrLeaderboardRank ? "rgb(250, 204, 21)" : "var(--text-subtle)" }}>
+              {rankStats.wrLeaderboardRank ? `#${rankStats.wrLeaderboardRank}` : "—"}
             </span>
             <span style={{ fontSize: "11px", color: "var(--text-subtle)", fontFamily: "monospace" }}>
               {stats.wrCount > 0 ? `${stats.wrCount} World Records` : "No World Records"}

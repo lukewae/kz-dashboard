@@ -3,79 +3,92 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { formatRank, getPlayerRank, getRankColor, sanitizeSteamId } from "@/lib/format";
-import { KzMap, KzPlayer, KzRecord, Mode } from "@/lib/types";
+import { formatRank, formatTime, getPlayerRank, getRankColor, sanitizeSteamId } from "@/lib/format";
+import { KzPlayer, KzRecord, Mode, Page } from "@/lib/types";
 import { useUserSteamId } from "@/lib/useUserSteamId";
-import { getSteamAvatarsDirect } from "@/lib/clientCs2kz";
+import { getLeaderboardPlayersPageDirect, getSteamAvatarsDirect, getWorldRecordsPageDirect } from "@/lib/clientCs2kz";
 
-interface TopWRPlayer {
-  id: string;
-  name: string;
-  count: number;
+const PAGE_SIZE = 10;
+
+function PaginationControls({
+  offset,
+  total,
+  loading,
+  onPrevious,
+  onNext,
+}: {
+  offset: number;
+  total: number;
+  loading: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: "1px solid var(--border)", background: "var(--panel)" }}>
+      <button type="button" className="btn-minimal" onClick={onPrevious} disabled={loading || offset === 0} aria-label="Previous page">
+        ←
+      </button>
+      <span className="mono" style={{ fontSize: "11px", color: "var(--text-subtle)" }}>
+        {loading ? "Loading…" : `Page ${currentPage} of ${totalPages}`}
+      </span>
+      <button type="button" className="btn-minimal" onClick={onNext} disabled={loading || offset + PAGE_SIZE >= total} aria-label="Next page">
+        →
+      </button>
+    </div>
+  );
 }
 
 export function LeaderboardsBrowser({
-  topPlayers,
-  worldRecords,
-  allMaps,
   mode,
 }: {
-  topPlayers: KzPlayer[];
-  worldRecords: KzRecord[];
-  allMaps: KzMap[];
   mode: Mode;
 }) {
   const { userSteamId } = useUserSteamId();
   const [rankedOnly, setRankedOnly] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [avatarsMap, setAvatarsMap] = useState<Record<string, string>>({});
+  const [topPlayersPage, setTopPlayersPage] = useState<Page<KzPlayer>>({ total: 0, values: [] });
+  const [worldRecordsPage, setWorldRecordsPage] = useState<Page<KzRecord>>({ total: 0, values: [] });
+  const [playersOffset, setPlayersOffset] = useState(0);
+  const [recordsOffset, setRecordsOffset] = useState(0);
+  const [playersLoading, setPlayersLoading] = useState(true);
+  const [recordsLoading, setRecordsLoading] = useState(true);
 
-  // Fast Course Ranked State Lookup Map: `${mapName}_${courseName}` -> boolean
-  const courseRankedMap = useMemo<Record<string, boolean>>(() => {
-    const mapLookup: Record<string, boolean> = {};
-    allMaps.forEach((m) => {
-      m.courses?.forEach((c) => {
-        const filt = c.filters?.[mode];
-        const isRanked = filt?.state === "ranked";
-        const key = `${m.name.toLowerCase()}_${c.name.toLowerCase()}`;
-        mapLookup[key] = isRanked;
+  useEffect(() => {
+    let active = true;
+    setPlayersOffset(0);
+    setRecordsOffset(0);
+    setPlayersLoading(true);
+    setRecordsLoading(true);
+
+    getLeaderboardPlayersPageDirect(mode, 0, PAGE_SIZE)
+      .then((page) => {
+        if (active) setTopPlayersPage(page);
+      })
+      .catch((error) => console.error("Failed to load rating leaderboard:", error))
+      .finally(() => {
+        if (active) setPlayersLoading(false);
       });
-    });
-    return mapLookup;
-  }, [allMaps, mode]);
 
-  // Aggregate World Record Holders
-  const wrHolders = useMemo<TopWRPlayer[]>(() => {
-    const playerMap = new Map<string, { id: string; name: string; count: number }>();
-
-    worldRecords.forEach((r) => {
-      const mapName = r.map?.name ?? "";
-      const courseName = r.course?.name ?? "Main";
-      const key = `${mapName.toLowerCase()}_${courseName.toLowerCase()}`;
-      const isRanked = courseRankedMap[key] ?? true;
-
-      if (rankedOnly && !isRanked) return;
-
-      const pid = r.player?.id ? sanitizeSteamId(r.player.id) : null;
-      if (!pid) return;
-      const pname = r.player?.name || pid;
-
-      if (!playerMap.has(pid)) {
-        playerMap.set(pid, { id: pid, name: pname, count: 0 });
-      }
-      playerMap.get(pid)!.count += 1;
-    });
-
-    return Array.from(playerMap.values())
-      .sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        return a.name.localeCompare(b.name);
+    getWorldRecordsPageDirect(mode, 0, PAGE_SIZE, rankedOnly)
+      .then((page) => {
+        if (active) setWorldRecordsPage(page);
+      })
+      .catch((error) => console.error("Failed to load world records:", error))
+      .finally(() => {
+        if (active) setRecordsLoading(false);
       });
-  }, [worldRecords, rankedOnly, courseRankedMap]);
+
+    return () => {
+      active = false;
+    };
+  }, [mode]); // Track filtering is handled explicitly by changeRankedOnly.
 
   // Filtered Rating Players
   const filteredRatingPlayers = useMemo(() => {
-    return topPlayers.filter((p) => {
+    return topPlayersPage.values.filter((p) => {
       const name = p.name ?? "";
       const pid = p.id ?? "";
       if (searchQuery.trim()) {
@@ -84,30 +97,69 @@ export function LeaderboardsBrowser({
       }
       return true;
     });
-  }, [topPlayers, searchQuery]);
+  }, [topPlayersPage, searchQuery]);
 
-  // Filtered WR Players
-  const filteredWrHolders = useMemo(() => {
-    return wrHolders.filter((p) => {
+  // Search applies to the ten records currently loaded from the API.
+  const filteredWorldRecords = useMemo(() => {
+    return worldRecordsPage.values.filter((record) => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        return p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q);
+        const playerName = record.player?.name ?? "";
+        const playerId = record.player?.id ?? "";
+        const mapName = record.map?.name ?? "";
+        return playerName.toLowerCase().includes(q) ||
+          playerId.toLowerCase().includes(q) ||
+          mapName.toLowerCase().includes(q);
       }
       return true;
     });
-  }, [wrHolders, searchQuery]);
+  }, [worldRecordsPage, searchQuery]);
 
   // Steam IDs to fetch avatars for (visible across both tables)
   const visibleSteamIds = useMemo(() => {
     const ids = new Set<string>();
-    filteredRatingPlayers.slice(0, 50).forEach((p) => {
+    filteredRatingPlayers.forEach((p) => {
       if (p.id) ids.add(sanitizeSteamId(p.id));
     });
-    filteredWrHolders.slice(0, 50).forEach((p) => {
-      if (p.id) ids.add(sanitizeSteamId(p.id));
+    filteredWorldRecords.forEach((record) => {
+      if (record.player?.id) ids.add(sanitizeSteamId(record.player.id));
     });
     return Array.from(ids);
-  }, [filteredRatingPlayers, filteredWrHolders]);
+  }, [filteredRatingPlayers, filteredWorldRecords]);
+
+  const loadPlayersPage = async (nextOffset: number) => {
+    if (playersLoading || nextOffset < 0) return;
+    setPlayersLoading(true);
+    try {
+      const page = await getLeaderboardPlayersPageDirect(mode, nextOffset, PAGE_SIZE);
+      setTopPlayersPage(page);
+      setPlayersOffset(nextOffset);
+    } catch (error) {
+      console.error("Failed to load rating leaderboard page:", error);
+    } finally {
+      setPlayersLoading(false);
+    }
+  };
+
+  const loadRecordsPage = async (nextOffset: number, nextRankedOnly = rankedOnly) => {
+    if (recordsLoading || nextOffset < 0) return;
+    setRecordsLoading(true);
+    try {
+      const page = await getWorldRecordsPageDirect(mode, nextOffset, PAGE_SIZE, nextRankedOnly);
+      setWorldRecordsPage(page);
+      setRecordsOffset(nextOffset);
+    } catch (error) {
+      console.error("Failed to load world records page:", error);
+    } finally {
+      setRecordsLoading(false);
+    }
+  };
+
+  const changeRankedOnly = (nextRankedOnly: boolean) => {
+    if (rankedOnly === nextRankedOnly) return;
+    setRankedOnly(nextRankedOnly);
+    void loadRecordsPage(0, nextRankedOnly);
+  };
 
   useEffect(() => {
     if (visibleSteamIds.length === 0) return;
@@ -163,14 +215,16 @@ export function LeaderboardsBrowser({
             <button
               type="button"
               className={`pill-btn ${rankedOnly ? "active" : ""}`}
-              onClick={() => setRankedOnly(true)}
+              onClick={() => changeRankedOnly(true)}
+              disabled={recordsLoading}
             >
               RANKED ONLY
             </button>
             <button
               type="button"
               className={`pill-btn ${!rankedOnly ? "active" : ""}`}
-              onClick={() => setRankedOnly(false)}
+              onClick={() => changeRankedOnly(false)}
+              disabled={recordsLoading}
             >
               ALL TRACKS
             </button>
@@ -265,7 +319,7 @@ export function LeaderboardsBrowser({
                 padding: "2px 8px",
               }}
             >
-              TOP {filteredRatingPlayers.length}
+              {playersLoading ? "LOADING" : `${topPlayersPage.total.toLocaleString()} PLAYERS`}
             </span>
           </div>
 
@@ -281,7 +335,7 @@ export function LeaderboardsBrowser({
               </thead>
               <tbody>
                 {filteredRatingPlayers.map((player, idx) => {
-                  const rankNum = idx + 1;
+                  const rankNum = playersOffset + idx + 1;
                   const rankColor = getRankColor(rankNum);
                   const rating = mode === "classic" ? player.ckz_rating : player.vnl_rating;
                   const rankInfo = getPlayerRank(rating);
@@ -378,12 +432,21 @@ export function LeaderboardsBrowser({
               </tbody>
             </table>
             {filteredRatingPlayers.length === 0 && (
-              <div className="empty-state">No players found matching your search.</div>
+              <div className="empty-state">
+                {playersLoading ? "Loading 10 players…" : "No players found matching your search."}
+              </div>
             )}
           </div>
+          <PaginationControls
+            offset={playersOffset}
+            total={topPlayersPage.total}
+            loading={playersLoading}
+            onPrevious={() => void loadPlayersPage(playersOffset - PAGE_SIZE)}
+            onNext={() => void loadPlayersPage(playersOffset + PAGE_SIZE)}
+          />
         </div>
 
-        {/* Right Column: World Records Leaderboard */}
+        {/* Right Column: Recent World Records */}
         <div
           style={{
             background: "var(--surface)",
@@ -406,10 +469,10 @@ export function LeaderboardsBrowser({
           >
             <div>
               <h2 style={{ fontSize: "15px", fontWeight: 700, margin: 0, letterSpacing: "0.02em" }}>
-                World Records Leaderboard
+                Recent World Records
               </h2>
               <span style={{ fontSize: "11px", color: "var(--text-subtle)", fontFamily: "monospace" }}>
-                Most #1 Times Held
+                Latest #1 times from the CS2KZ API
               </span>
             </div>
             <span
@@ -422,7 +485,7 @@ export function LeaderboardsBrowser({
                 padding: "2px 8px",
               }}
             >
-              {filteredWrHolders.length} WR HOLDERS
+              {recordsLoading ? "LOADING" : `${worldRecordsPage.total.toLocaleString()} RECORDS`}
             </span>
           </div>
 
@@ -432,34 +495,35 @@ export function LeaderboardsBrowser({
                 <tr>
                   <th style={{ width: "50px" }}>#</th>
                   <th>Player</th>
-                  <th style={{ width: "120px", textAlign: "right" }}>World Records</th>
-                  <th style={{ width: "90px", textAlign: "center" }}>Action</th>
+                  <th>Map / Course</th>
+                  <th style={{ width: "90px", textAlign: "right" }}>Time</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredWrHolders.map((player, idx) => {
-                  const rankNum = idx + 1;
-                  const rankColor = getRankColor(rankNum);
-                  const cleanWrId = sanitizeSteamId(player.id);
+                {filteredWorldRecords.map((record, idx) => {
+                  const rowNum = recordsOffset + idx + 1;
+                  const cleanWrId = sanitizeSteamId(record.player.id);
                   const isCurrentUser =
                     !!userSteamId &&
                     cleanWrId.toLowerCase() === userSteamId.toLowerCase();
                   const avatarUrl = avatarsMap[cleanWrId];
-                  const displayName = player.name || cleanWrId;
+                  const displayName = record.player.name || cleanWrId;
+                  const mapName = record.map?.name || "Unknown map";
+                  const courseName = record.course?.name || "Main";
 
                   return (
                     <tr
-                      key={player.id}
+                      key={record.id}
                       className={isCurrentUser ? "current-user-row" : ""}
                     >
                       <td
                         className="mono"
                         style={{
-                          color: isCurrentUser ? "var(--user-blue)" : rankColor,
-                          fontWeight: rankNum <= 3 || isCurrentUser ? 700 : 500,
+                          color: isCurrentUser ? "var(--user-blue)" : "var(--text-subtle)",
+                          fontWeight: isCurrentUser ? 700 : 500,
                         }}
                       >
-                        {formatRank(rankNum)}
+                        {rowNum}
                       </td>
                       <td>
                         <Link
@@ -500,41 +564,38 @@ export function LeaderboardsBrowser({
                           {isCurrentUser && <span className="current-user-tag">YOU</span>}
                         </Link>
                       </td>
-                      <td style={{ textAlign: "right" }}>
-                        <span
-                          className="tag-badge"
-                          style={{
-                            color: "rgb(255, 215, 0)",
-                            borderColor: "rgba(255, 215, 0, 0.5)",
-                            background: "rgba(255, 215, 0, 0.12)",
-                            fontWeight: 700,
-                            fontSize: "11px",
-                            padding: "2px 8px",
-                            fontFamily: "ui-monospace, monospace",
-                          }}
-                        >
-                          ★ {player.count} {player.count === 1 ? "WR" : "WRs"}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: "center" }}>
+                      <td>
                         <Link
-                          href={`/profile/${cleanWrId}?mode=${mode}`}
+                          href={`/maps/${encodeURIComponent(mapName)}?course=${encodeURIComponent(courseName)}&mode=${mode}`}
                           prefetch={false}
-                          className="btn-minimal"
-                          style={{ padding: "2px 8px", fontSize: "11px", display: "inline-block" }}
+                          className="player-link"
+                          style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}
                         >
-                          Profile ↗
+                          <span style={{ color: "#fff", fontWeight: 600 }}>{mapName}</span>
+                          <span style={{ color: "var(--text-subtle)", fontSize: "11px" }}>{courseName}</span>
                         </Link>
+                      </td>
+                      <td className="mono" style={{ textAlign: "right", color: "rgb(255, 215, 0)", fontWeight: 700 }}>
+                        {formatTime(record.time)}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            {filteredWrHolders.length === 0 && (
-              <div className="empty-state">No world record holders found.</div>
+            {filteredWorldRecords.length === 0 && (
+              <div className="empty-state">
+                {recordsLoading ? "Loading 10 world records…" : "No world records found."}
+              </div>
             )}
           </div>
+          <PaginationControls
+            offset={recordsOffset}
+            total={worldRecordsPage.total}
+            loading={recordsLoading}
+            onPrevious={() => void loadRecordsPage(recordsOffset - PAGE_SIZE)}
+            onNext={() => void loadRecordsPage(recordsOffset + PAGE_SIZE)}
+          />
         </div>
       </div>
     </div>

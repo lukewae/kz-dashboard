@@ -8,6 +8,7 @@ const API_BASE_URL = "https://api.cs2kz.org";
 const SUMMARY_TTL_MS = 5 * 60 * 1000;
 const RECORDS_TTL_MS = 2 * 60 * 1000;
 const AVATAR_TTL_MS = 24 * 60 * 60 * 1000;
+const RANKS_TTL_MS = 5 * 60 * 1000;
 
 interface TimedValue<T> {
   value: T;
@@ -19,13 +20,26 @@ export interface PlayerSummary {
   steamProfile: KzSteamProfile | null;
 }
 
+export interface ProfileRanks {
+  overallRank: number | null;
+  wrLeaderboardRank: number | null;
+}
+
 const summaryCache = new Map<string, TimedValue<PlayerSummary>>();
 const summaryRequests = new Map<string, Promise<PlayerSummary>>();
 const recordsCache = new Map<string, TimedValue<KzRecord[]>>();
 const recordsRequests = new Map<string, Promise<KzRecord[]>>();
+const worldRecordsCache = new Map<string, TimedValue<KzRecord[]>>();
+const worldRecordsRequests = new Map<string, Promise<KzRecord[]>>();
+const leaderboardPlayersCache = new Map<string, TimedValue<Page<KzPlayer>>>();
+const leaderboardPlayersRequests = new Map<string, Promise<Page<KzPlayer>>>();
+const worldRecordsPageCache = new Map<string, TimedValue<Page<KzRecord>>>();
+const worldRecordsPageRequests = new Map<string, Promise<Page<KzRecord>>>();
 const steamProfileCache = new Map<string, TimedValue<KzSteamProfile>>();
 const steamProfileRequests = new Map<string, Promise<KzSteamProfile | null>>();
 const avatarCache = new Map<string, TimedValue<string>>();
+const profileRanksCache = new Map<string, TimedValue<ProfileRanks>>();
+const profileRanksRequests = new Map<string, Promise<ProfileRanks>>();
 
 function getFresh<T>(cache: Map<string, TimedValue<T>>, key: string): T | null {
   const cached = cache.get(key);
@@ -126,6 +140,142 @@ export function getPlayerRecordsDirect(steamId: string, mode: Mode): Promise<KzR
     .finally(() => recordsRequests.delete(key));
 
   recordsRequests.set(key, request);
+  return request;
+}
+
+export function getRecentWorldRecordsDirect(mode: Mode, limit = 5): Promise<KzRecord[]> {
+  const key = `${mode}:${limit}`;
+  const cached = getFresh(worldRecordsCache, key);
+  if (cached) return Promise.resolve(cached);
+
+  const pending = worldRecordsRequests.get(key);
+  if (pending) return pending;
+
+  const params = new URLSearchParams({
+    mode,
+    top: "true",
+    max_rank: "1",
+    limit: String(limit),
+    offset: "0",
+  });
+
+  const request = fetchJson<Page<KzRecord>>(`/records?${params.toString()}`)
+    .then((page) => {
+      const records = Array.isArray(page.values) ? page.values : [];
+      worldRecordsCache.set(key, { value: records, expiresAt: Date.now() + 30_000 });
+      return records;
+    })
+    .catch(() => [])
+    .finally(() => worldRecordsRequests.delete(key));
+
+  worldRecordsRequests.set(key, request);
+  return request;
+}
+
+export function getLeaderboardPlayersPageDirect(mode: Mode, offset: number, limit = 10): Promise<Page<KzPlayer>> {
+  const key = `${mode}:${offset}:${limit}`;
+  const cached = getFresh(leaderboardPlayersCache, key);
+  if (cached) return Promise.resolve(cached);
+
+  const pending = leaderboardPlayersRequests.get(key);
+  if (pending) return pending;
+
+  const params = new URLSearchParams({
+    sort_by: mode === "classic" ? "ckz-rating" : "vnl-rating",
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const request = fetchJson<Page<KzPlayer>>(`/players?${params.toString()}`)
+    .then((result) => {
+      leaderboardPlayersCache.set(key, { value: result, expiresAt: Date.now() + 30_000 });
+      return result;
+    })
+    .finally(() => leaderboardPlayersRequests.delete(key));
+
+  leaderboardPlayersRequests.set(key, request);
+  return request;
+}
+
+export function getWorldRecordsPageDirect(
+  mode: Mode,
+  offset: number,
+  limit = 10,
+  rankedOnly = true
+): Promise<Page<KzRecord>> {
+  const key = `${mode}:${offset}:${limit}:${rankedOnly}`;
+  const cached = getFresh(worldRecordsPageCache, key);
+  if (cached) return Promise.resolve(cached);
+
+  const pending = worldRecordsPageRequests.get(key);
+  if (pending) return pending;
+
+  const params = new URLSearchParams({
+    mode,
+    top: "true",
+    max_rank: "1",
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (rankedOnly) params.set("ranked", "true");
+
+  const request = fetchJson<Page<KzRecord>>(`/records?${params.toString()}`)
+    .then((result) => {
+      worldRecordsPageCache.set(key, { value: result, expiresAt: Date.now() + 30_000 });
+      return result;
+    })
+    .finally(() => worldRecordsPageRequests.delete(key));
+
+  worldRecordsPageRequests.set(key, request);
+  return request;
+}
+
+export function getProfileRanksDirect(steamId: string, mode: Mode): Promise<ProfileRanks> {
+  const cleanId = sanitizeSteamId(steamId);
+  const key = `${cleanId}:${mode}`;
+  const cached = getFresh(profileRanksCache, key);
+  if (cached) return Promise.resolve(cached);
+
+  const pending = profileRanksRequests.get(key);
+  if (pending) return pending;
+
+  const playersQuery = new URLSearchParams({
+    sort_by: mode === "classic" ? "ckz-rating" : "vnl-rating",
+    limit: "1000",
+    offset: "0",
+  });
+  const recordsQuery = new URLSearchParams({
+    mode,
+    top: "true",
+    max_rank: "1",
+    limit: "1000",
+    offset: "0",
+  });
+
+  const request = Promise.all([
+    fetchJson<Page<KzPlayer>>(`/players?${playersQuery.toString()}`).catch(() => ({ total: 0, values: [] })),
+    fetchJson<Page<KzRecord>>(`/records?${recordsQuery.toString()}`).catch(() => ({ total: 0, values: [] })),
+  ])
+    .then(([players, worldRecords]) => {
+      const overallIndex = players.values.findIndex((player) => sanitizeSteamId(player.id) === cleanId);
+      const wrCounts = new Map<string, number>();
+      for (const record of worldRecords.values) {
+        if (!record.player?.id) continue;
+        const playerId = sanitizeSteamId(record.player.id);
+        wrCounts.set(playerId, (wrCounts.get(playerId) ?? 0) + 1);
+      }
+      const wrIndex = Array.from(wrCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .findIndex(([playerId]) => playerId === cleanId);
+      const value = {
+        overallRank: overallIndex >= 0 ? overallIndex + 1 : null,
+        wrLeaderboardRank: wrIndex >= 0 ? wrIndex + 1 : null,
+      };
+      profileRanksCache.set(key, { value, expiresAt: Date.now() + RANKS_TTL_MS });
+      return value;
+    })
+    .finally(() => profileRanksRequests.delete(key));
+
+  profileRanksRequests.set(key, request);
   return request;
 }
 

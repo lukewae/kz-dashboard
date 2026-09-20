@@ -1,7 +1,7 @@
 import { ServersBrowser } from "@/components/ServersBrowser";
 import { cs2kzProvider } from "@/lib/providers/cs2kz";
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 export default async function ServersPage() {
   const servers = await cs2kzProvider.getServers();

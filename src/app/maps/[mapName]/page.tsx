@@ -5,7 +5,7 @@ import { MapControls } from "@/components/MapControls";
 import { LeaderboardTable } from "@/components/Leaderboard";
 import { MapArtwork } from "@/components/MapArtwork";
 import { cs2kzProvider } from "@/lib/providers/cs2kz";
-import { formatTime, getTierInfo, resolveCanonicalTier } from "@/lib/format";
+import { formatTime, getTierInfo } from "@/lib/format";
 import { Leaderboard, Mode } from "@/lib/types";
 
 const isMode = (v?: string): v is Mode => v === "vanilla" || v === "classic";
@@ -70,7 +70,7 @@ export default async function MapPage({
   });
 
   const filter = selectedCourse.filters?.[mode];
-  const tierKey = resolveCanonicalTier(filter?.nub_tier, filter?.pro_tier);
+  const tierKey = leaderboard === "pro" ? filter?.pro_tier : filter?.nub_tier;
   const tierInfo = getTierInfo(tierKey);
   const mappers = (map.mappers ?? []).map((m) => m.name).join(", ") || "Unknown";
   const wrRecord = records.values[0];

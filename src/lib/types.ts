@@ -135,8 +135,7 @@ export interface KzDataProvider {
     steamId: string,
     options?: { mode?: Mode; leaderboard?: Leaderboard }
   ): Promise<Page<KzRecord>>;
-  getWorldRecords(options?: { mode?: Mode; limit?: number }): Promise<KzRecord[]>;
-  getTopPlayers(options?: { mode?: Mode; limit?: number; offset?: number }): Promise<Page<KzPlayer>>;
-  getServers(): Promise<KzServer[]>;
+  getTopPlayers(options?: { mode?: Mode; limit?: number; offset?: number; fresh?: boolean; revalidate?: number; timeoutMs?: number }): Promise<Page<KzPlayer>>;
+  getServers(options?: { fresh?: boolean; revalidate?: number; timeoutMs?: number }): Promise<KzServer[]>;
   getServer(id: number | string): Promise<KzServer | null>;
 }

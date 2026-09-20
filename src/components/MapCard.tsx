@@ -4,16 +4,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { KzMap, Mode } from "@/lib/types";
-import { formatDate, getMapImageUrl, getTierInfo, resolveCanonicalTier } from "@/lib/format";
+import { formatDate, getMapImageUrl, getTierInfo } from "@/lib/format";
+import type { MapRunType } from "@/components/MapsBrowser";
 
 export function MapCard({
   map,
   mode = "classic",
+  runType = "tp",
   highlightTiers,
   includeUnranked = false,
 }: {
   map: KzMap;
   mode?: Mode;
+  runType?: MapRunType;
   highlightTiers?: Set<number>;
   includeUnranked?: boolean;
 }) {
@@ -27,16 +30,13 @@ export function MapCard({
     .map((c) => {
       const filt = c.filters?.[mode];
       const isRanked = filt?.state?.toLowerCase() === "ranked";
-      const rawNub = filt?.nub_tier?.toLowerCase();
-      const rawPro = filt?.pro_tier?.toLowerCase();
+      const tierKey = runType === "pro" ? filt?.pro_tier : filt?.nub_tier;
+      const rawTier = tierKey?.toLowerCase();
       const isImpossible =
-        rawNub === "impossible" ||
-        rawPro === "impossible" ||
-        rawNub === "unfeasible" ||
-        rawPro === "unfeasible" ||
+        rawTier === "impossible" ||
+        rawTier === "unfeasible" ||
         filt?.state?.toLowerCase() === "impossible";
 
-      const tierKey = resolveCanonicalTier(filt?.nub_tier, filt?.pro_tier);
       const tierInfo = getTierInfo(tierKey);
       return {
         course: c,
@@ -59,7 +59,7 @@ export function MapCard({
     <div className="map-card" style={{ display: "flex", flexDirection: "column", textDecoration: "none" }}>
       {/* Thumbnail */}
       <Link
-        href={`/maps/${encodeURIComponent(map.name)}?mode=${mode}`}
+        href={`/maps/${encodeURIComponent(map.name)}?mode=${mode}&leaderboard=${runType === "pro" ? "pro" : "overall"}`}
         prefetch={false}
         className="map-card-thumb-wrap"
         style={{ display: "block", textDecoration: "none" }}
@@ -120,7 +120,7 @@ export function MapCard({
         {/* Title and Mapper */}
         <div>
           <Link
-            href={`/maps/${encodeURIComponent(map.name)}?mode=${mode}`}
+            href={`/maps/${encodeURIComponent(map.name)}?mode=${mode}&leaderboard=${runType === "pro" ? "pro" : "overall"}`}
             prefetch={false}
             className="map-card-title hover-underline"
             style={{ textDecoration: "none", color: "#ffffff", display: "block" }}
@@ -149,7 +149,7 @@ export function MapCard({
               return (
                 <Link
                   key={cm.course.name}
-                  href={`/maps/${encodeURIComponent(map.name)}?course=${encodeURIComponent(cm.course.name)}&mode=${mode}`}
+                  href={`/maps/${encodeURIComponent(map.name)}?course=${encodeURIComponent(cm.course.name)}&mode=${mode}&leaderboard=${runType === "pro" ? "pro" : "overall"}`}
                   prefetch={false}
                   style={{
                     display: "inline-flex",

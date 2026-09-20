@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { formatDate, getTierInfo, resolveCanonicalTier } from "@/lib/format";
+import { formatDate, getTierInfo } from "@/lib/format";
 import { Course, Leaderboard, Mode } from "@/lib/types";
 
 export function MapControls({
@@ -113,7 +113,7 @@ export function MapControls({
             const filt = c.filters?.[mode];
             const isRanked = filt?.state?.toLowerCase() === "ranked";
             const isActive = c.name === course;
-            const tierKey = resolveCanonicalTier(filt?.nub_tier, filt?.pro_tier);
+            const tierKey = leaderboard === "pro" ? filt?.pro_tier : filt?.nub_tier;
             const tierInfo = getTierInfo(tierKey);
 
             return (

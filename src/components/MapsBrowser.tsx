@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { KzMap, Mode, Tier } from "@/lib/types";
 import { MapCard } from "@/components/MapCard";
-import { getTierInfo, resolveCanonicalTier, TIER_CONFIG } from "@/lib/format";
+import { getTierInfo, TIER_CONFIG } from "@/lib/format";
+
+export type MapRunType = "tp" | "pro";
 
 const TIERS_CONFIG: { level: number; key: Tier; short: string; label: string; color: string }[] = [
   { level: 1, key: "very-easy", short: "T1", label: "Very Easy", color: TIER_CONFIG["very-easy"].color },
@@ -19,6 +21,7 @@ const TIERS_CONFIG: { level: number; key: Tier; short: string; label: string; co
 export function MapsBrowser({ maps }: { maps: KzMap[] }) {
   const [search, setSearch] = useState("");
   const [mode, setMode] = useState<Mode>("classic");
+  const [runType, setRunType] = useState<MapRunType>("tp");
   const [sortBy, setSortBy] = useState<string>("name-asc");
   const [selectedTiers, setSelectedTiers] = useState<Set<number>>(new Set());
   // Unranked tracks hidden by default
@@ -39,16 +42,13 @@ export function MapsBrowser({ maps }: { maps: KzMap[] }) {
           .map((c) => {
             const filt = c.filters?.[mode];
             const isRanked = filt?.state?.toLowerCase() === "ranked";
-            const rawNub = filt?.nub_tier?.toLowerCase();
-            const rawPro = filt?.pro_tier?.toLowerCase();
+            const tierKey = runType === "pro" ? filt?.pro_tier : filt?.nub_tier;
+            const rawTier = tierKey?.toLowerCase();
             const isImpossible =
-              rawNub === "impossible" ||
-              rawPro === "impossible" ||
-              rawNub === "unfeasible" ||
-              rawPro === "unfeasible" ||
+              rawTier === "impossible" ||
+              rawTier === "unfeasible" ||
               filt?.state?.toLowerCase() === "impossible";
 
-            const tierKey = resolveCanonicalTier(filt?.nub_tier, filt?.pro_tier);
             const tierInfo = getTierInfo(tierKey);
             return {
               course: c,
@@ -82,7 +82,7 @@ export function MapsBrowser({ maps }: { maps: KzMap[] }) {
       })
       // Only include maps that have at least one valid possible course in this mode
       .filter((item) => item.hasPossible);
-  }, [activeMaps, mode]);
+  }, [activeMaps, mode, runType]);
 
   // Calculate accurate ranked course counts for each tier (matches Profile exactly)
   const tierCourseCounts = useMemo(() => {
@@ -198,7 +198,7 @@ export function MapsBrowser({ maps }: { maps: KzMap[] }) {
       .map((item) => item.map);
   }, [mapCoursesData, search, sortBy, selectedTiers, includeUnranked]);
 
-  const hasActiveFilters = search !== "" || selectedTiers.size > 0 || includeUnranked;
+  const hasActiveFilters = search !== "" || selectedTiers.size > 0 || includeUnranked || runType !== "tp";
 
   // Total ranked tracks in this mode
   const totalRankedTracks = useMemo(() => {
@@ -261,6 +261,25 @@ export function MapsBrowser({ maps }: { maps: KzMap[] }) {
                 onClick={() => setMode("vanilla")}
               >
                 VANILLA (VNL)
+              </button>
+            </div>
+
+            {/* TP/PRO tier source */}
+            <div className="pill-group">
+              <span className="pill-label">Tier type:</span>
+              <button
+                type="button"
+                className={`pill-btn ${runType === "tp" ? "active" : ""}`}
+                onClick={() => setRunType("tp")}
+              >
+                TP
+              </button>
+              <button
+                type="button"
+                className={`pill-btn ${runType === "pro" ? "active" : ""}`}
+                onClick={() => setRunType("pro")}
+              >
+                PRO
               </button>
             </div>
 
@@ -404,6 +423,7 @@ export function MapsBrowser({ maps }: { maps: KzMap[] }) {
                 setSearch("");
                 selectAllTiers();
                 setIncludeUnranked(false);
+                setRunType("tp");
               }}
               style={{
                 marginLeft: "auto",
@@ -425,7 +445,7 @@ export function MapsBrowser({ maps }: { maps: KzMap[] }) {
       {/* 2. Results Count Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px" }}>
         <span style={{ fontSize: "12px", color: "var(--text-subtle)", fontFamily: "monospace" }}>
-          Showing <strong style={{ color: "#ffffff" }}>{filteredMaps.length}</strong> maps ({totalRankedTracks} ranked {mode === "vanilla" ? "Vanilla" : "Classic"} tracks)
+          Showing <strong style={{ color: "#ffffff" }}>{filteredMaps.length}</strong> maps ({totalRankedTracks} ranked {mode === "vanilla" ? "Vanilla" : "Classic"} {runType.toUpperCase()} tracks)
         </span>
       </div>
 
@@ -437,6 +457,7 @@ export function MapsBrowser({ maps }: { maps: KzMap[] }) {
               key={map.id}
               map={map}
               mode={mode}
+              runType={runType}
               highlightTiers={selectedTiers}
               includeUnranked={includeUnranked}
             />
@@ -465,6 +486,7 @@ export function MapsBrowser({ maps }: { maps: KzMap[] }) {
               setSearch("");
               selectAllTiers();
               setIncludeUnranked(false);
+              setRunType("tp");
             }}
             style={{ marginTop: "14px", padding: "6px 14px", fontSize: "12px" }}
           >

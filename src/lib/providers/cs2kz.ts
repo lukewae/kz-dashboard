@@ -9,7 +9,11 @@ const WORKSHOP_IMAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const workshopImageCache = new Map<number, { url: string; expiresAt: number }>();
 const workshopImageRequests = new Map<string, Promise<void>>();
 
-async function request<T>(path: string, params: Record<string, string | number | boolean | undefined> = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  params: Record<string, string | number | boolean | undefined> = {},
+  options: { fresh?: boolean; revalidate?: number; timeoutMs?: number } = {}
+): Promise<T> {
   const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = new URL(`${cleanBase}${cleanPath}`);
@@ -20,15 +24,18 @@ async function request<T>(path: string, params: Record<string, string | number |
     }
   }
 
-  const signal = AbortSignal.timeout(12000);
-  const response = await fetch(url.toString(), {
-    next: { revalidate: 60 },
-    signal,
-    headers: {
-      "Accept": "application/json",
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    },
-  });
+  const signal = AbortSignal.timeout(options.timeoutMs ?? 12000);
+  const response = await fetch(url.toString(), options.fresh
+    ? {
+        cache: "no-store",
+        signal,
+        headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      }
+    : {
+        next: { revalidate: options.revalidate ?? 60 },
+        signal,
+        headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      });
 
   if (!response.ok) {
     throw new Error(`CS2KZ API request failed (${response.status}) for ${cleanPath}`);
@@ -187,8 +194,9 @@ export const cs2kzProvider: KzDataProvider = {
           limit: query.limit ?? 100,
           offset: query.offset ?? 0,
           has_teleports: hasTeleports,
-        })
-      );
+        },
+        { fresh: true }
+      ));
     } catch (err) {
       console.error(`Failed to get records:`, err);
       return { total: 0, values: [] };
@@ -231,34 +239,16 @@ export const cs2kzProvider: KzDataProvider = {
           top: true,
           limit: 1000,
           offset: 0,
-        })
-      );
+        },
+        { fresh: true }
+      ));
     } catch (err) {
       console.error(`Failed to get player records for ${cleanId}:`, err);
       return { total: 0, values: [] };
     }
   },
 
-  async getWorldRecords(options: { mode?: Mode; limit?: number } = {}): Promise<KzRecord[]> {
-    const mode = options.mode || "classic";
-    try {
-      const data = page<KzRecord>(
-        await request<unknown>("/records", {
-          mode,
-          top: true,
-          max_rank: 1,
-          limit: options.limit ?? 1000,
-          offset: 0,
-        })
-      );
-      return data.values;
-    } catch (err) {
-      console.error("Failed to get world records:", err);
-      return [];
-    }
-  },
-
-  async getTopPlayers(options: { mode?: Mode; limit?: number; offset?: number } = {}): Promise<Page<KzPlayer>> {
+  async getTopPlayers(options: { mode?: Mode; limit?: number; offset?: number; fresh?: boolean; revalidate?: number; timeoutMs?: number } = {}): Promise<Page<KzPlayer>> {
     const mode = options.mode || "classic";
     const sortBy = mode === "classic" ? "ckz-rating" : "vnl-rating";
     try {
@@ -267,22 +257,32 @@ export const cs2kzProvider: KzDataProvider = {
           sort_by: sortBy,
           limit: options.limit ?? 100,
           offset: options.offset ?? 0,
-        })
-      );
+        },
+        {
+          fresh: options.fresh ?? true,
+          revalidate: options.revalidate,
+          timeoutMs: options.timeoutMs,
+        }
+      ));
     } catch (err) {
       console.error("Failed to get top players:", err);
       return { total: 0, values: [] };
     }
   },
 
-  async getServers(): Promise<KzServer[]> {
+  async getServers(options: { fresh?: boolean; revalidate?: number; timeoutMs?: number } = {}): Promise<KzServer[]> {
     try {
       const data = page<KzServer>(
         await request<unknown>("/servers", {
           limit: 500,
           offset: 0,
-        })
-      );
+        },
+        {
+          fresh: options.fresh ?? true,
+          revalidate: options.revalidate,
+          timeoutMs: options.timeoutMs,
+        }
+      ));
       return data.values;
     } catch (err) {
       console.error("Failed to get global servers:", err);
@@ -292,7 +292,7 @@ export const cs2kzProvider: KzDataProvider = {
 
   async getServer(id: number | string): Promise<KzServer | null> {
     try {
-      return await request<KzServer>(`/servers/${id}`);
+      return await request<KzServer>(`/servers/${id}`, {}, { fresh: true });
     } catch (err) {
       console.error(`Failed to get server info for ${id}:`, err);
       return null;

@@ -9,7 +9,7 @@ import { ProfileBrowser } from "@/components/ProfileBrowser";
 const isMode = (v?: string): v is Mode => v === "vanilla" || v === "classic";
 const isBoard = (v?: string): v is Leaderboard => v === "overall" || v === "pro";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function ProfilePage({
   params,
@@ -27,40 +27,17 @@ export default async function ProfilePage({
     ? query.leaderboard
     : "overall";
 
-  // Fetch player, steam profile, records, catalog, top players, and world records in parallel
-  const [player, steamProfile, records, allMaps, topPlayersData, worldRecords] = await Promise.all([
+  // Only profile-critical data blocks navigation. Global rank datasets load in
+  // the client after the profile is visible.
+  const [player, steamProfile, allMaps] = await Promise.all([
     cs2kzProvider.getPlayer(steamId),
     cs2kzProvider.getPlayerSteamProfile(steamId),
-    cs2kzProvider.getPlayerRecords(steamId, { mode, leaderboard }),
     cs2kzProvider.getAllMaps(),
-    cs2kzProvider.getTopPlayers({ mode, limit: 1000 }),
-    cs2kzProvider.getWorldRecords({ mode }),
   ]);
 
-  if (!player && (!records || records.total === 0)) {
+  if (!player && !steamProfile) {
     notFound();
   }
-
-  // Calculate overall rating rank
-  const cleanId = sanitizeSteamId(steamId);
-  const overallRankIdx = topPlayersData.values.findIndex(
-    (p) => sanitizeSteamId(p.id) === cleanId
-  );
-  const overallRank = overallRankIdx !== -1 ? overallRankIdx + 1 : null;
-
-  // Calculate WR leaderboard rank
-  const wrCounts: Record<string, number> = {};
-  worldRecords.forEach((r) => {
-    if (r.player?.id) {
-      const pid = sanitizeSteamId(r.player.id);
-      wrCounts[pid] = (wrCounts[pid] || 0) + 1;
-    }
-  });
-  const sortedWrHolders = Object.entries(wrCounts)
-    .map(([id, count]) => ({ id, count }))
-    .sort((a, b) => b.count - a.count);
-  const wrRankIdx = sortedWrHolders.findIndex((h) => h.id === cleanId);
-  const wrLeaderboardRank = wrRankIdx !== -1 ? wrRankIdx + 1 : null;
 
   const playerName = steamProfile?.name || player?.name || steamId;
   const rating = mode === "classic" ? player?.ckz_rating : player?.vnl_rating;
@@ -182,14 +159,15 @@ export default async function ProfilePage({
 
       {/* Interactive Profile Browser (Mode, Leaderboard, WRs/Top 10 Module, Stats Cards, Filters & Records Table) */}
       <ProfileBrowser
+        key={`${steamId}:${mode}:${leaderboard}`}
         player={player}
-        records={records.values}
+        records={[]}
         allMaps={allMaps}
         steamId={steamId}
         mode={mode}
         leaderboard={leaderboard}
-        overallRank={overallRank}
-        wrLeaderboardRank={wrLeaderboardRank}
+        overallRank={null}
+        wrLeaderboardRank={null}
       />
     </>
   );

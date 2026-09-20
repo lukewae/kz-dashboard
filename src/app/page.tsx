@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "Live Counter-Strike 2 KZ telemetry, recent world records, and global rating leaderboards.",
 };
 
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   searchParams: Promise<{
@@ -20,19 +20,17 @@ export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
   const mode: Mode = params.mode === "vanilla" ? "vanilla" : "classic";
 
-  const [allMaps, allWorldRecords, topPlayersData, allServers] = await Promise.all([
+  const [allMaps, topPlayersData, allServers] = await Promise.all([
     cs2kzProvider.getAllMaps(),
-    cs2kzProvider.getWorldRecords({ mode }),
-    cs2kzProvider.getTopPlayers({ mode, limit: 20 }),
-    cs2kzProvider.getServers(),
+    cs2kzProvider.getTopPlayers({ mode, limit: 20, fresh: false, revalidate: 30, timeoutMs: 4000 }),
+    cs2kzProvider.getServers({ fresh: false, revalidate: 10, timeoutMs: 3000 }),
   ]);
 
   return (
     <OverviewDashboard
       mode={mode}
-      recentWrs={allWorldRecords}
+      recentWrs={[]}
       topPointsPlayers={topPlayersData.values}
-      allWorldRecords={allWorldRecords}
       allMaps={allMaps}
       allServers={allServers}
     />

@@ -169,6 +169,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link
               className={`mobile-nav-link ${pathname === "/leaderboards" ? "active" : ""}`}
               href="/leaderboards"
+              prefetch={false}
               onClick={() => setMobileMenuOpen(false)}
             >
               <span style={{ fontSize: "18px", fontWeight: 700 }}>Leaderboards</span>
@@ -178,6 +179,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link
               className={`mobile-nav-link ${pathname === "/servers" ? "active" : ""}`}
               href="/servers"
+              prefetch={false}
               onClick={() => setMobileMenuOpen(false)}
             >
               <span style={{ fontSize: "18px", fontWeight: 700 }}>Servers</span>
@@ -273,6 +275,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link
             className={`nav-link ${pathname === "/leaderboards" ? "active" : ""}`}
             href="/leaderboards"
+            prefetch={false}
           >
             <span>Leaderboards</span>
           </Link>
@@ -280,6 +283,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link
             className={`nav-link ${pathname === "/servers" ? "active" : ""}`}
             href="/servers"
+            prefetch={false}
           >
             <span>Servers</span>
           </Link>
