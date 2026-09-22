@@ -27,12 +27,12 @@ export default async function ProfilePage({
     ? query.leaderboard
     : "overall";
 
-  // Only profile-critical data blocks navigation. Global rank datasets load in
-  // the client after the profile is visible.
+  // Only profile-critical header data blocks navigation. The player's records
+  // load through the short-lived shared cache after the profile is visible.
   const [player, steamProfile, allMaps] = await Promise.all([
     cs2kzProvider.getPlayer(steamId),
     cs2kzProvider.getPlayerSteamProfile(steamId),
-    cs2kzProvider.getAllMaps(),
+    cs2kzProvider.getAllMaps({ attachImages: false }),
   ]);
 
   if (!player && !steamProfile) {

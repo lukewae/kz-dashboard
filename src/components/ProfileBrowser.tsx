@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatFullTimestamp, formatRank, formatRelativeTime, formatTime, getPlayerRank, getRankColor, getRecordTimestamp, getTierInfo, resolveCanonicalTier, TIER_CONFIG } from "@/lib/format";
 import { KzMap, KzPlayer, KzRecord, Leaderboard, Mode, Tier } from "@/lib/types";
-import { getPlayerRecordsDirect, getProfileRanksDirect } from "@/lib/clientCs2kz";
+import { getPlayerRecordsDirect } from "@/lib/clientCs2kz";
 
 const TIERS_LIST: { level: number; key: Tier; short: string; label: string; color: string; rgb: string }[] = [
   { level: 1, key: "very-easy", short: "T1", label: "Very Easy", color: "rgb(134, 239, 172)", rgb: "134, 239, 172" },
@@ -55,14 +55,21 @@ export function ProfileBrowser({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [records, setRecords] = useState(initialRecords);
   const [recordsLoading, setRecordsLoading] = useState(initialRecords.length === 0);
-  const [rankStats, setRankStats] = useState({ overallRank, wrLeaderboardRank });
+  const [recordsError, setRecordsError] = useState<string | null>(null);
+  const [recordsReloadKey, setRecordsReloadKey] = useState(0);
+  const rankStats = { overallRank, wrLeaderboardRank };
 
   useEffect(() => {
     let active = true;
     setRecordsLoading(true);
+    setRecordsError(null);
     getPlayerRecordsDirect(steamId, mode)
       .then((nextRecords) => {
         if (active) setRecords(nextRecords);
+      })
+      .catch((error) => {
+        console.error("Failed to load player records:", error);
+        if (active) setRecordsError("Player records are temporarily unavailable.");
       })
       .finally(() => {
         if (active) setRecordsLoading(false);
@@ -70,18 +77,7 @@ export function ProfileBrowser({
     return () => {
       active = false;
     };
-  }, [steamId, mode]);
-
-  useEffect(() => {
-    let active = true;
-    setRankStats({ overallRank, wrLeaderboardRank });
-    getProfileRanksDirect(steamId, mode).then((ranks) => {
-      if (active) setRankStats(ranks);
-    });
-    return () => {
-      active = false;
-    };
-  }, [steamId, mode, overallRank, wrLeaderboardRank]);
+  }, [steamId, mode, recordsReloadKey]);
 
   const rating = mode === "classic" ? player?.ckz_rating : player?.vnl_rating;
   const rankInfo = getPlayerRank(rating);
@@ -407,19 +403,24 @@ export function ProfileBrowser({
         </div>
       </div>
 
-      {recordsLoading && (
+      {recordsLoading ? (
         <div
+          className="loading-screen-container"
           role="status"
-          style={{
-            margin: "-4px 0 16px",
-            color: "var(--text-subtle)",
-            fontSize: "11px",
-            fontFamily: "ui-monospace, monospace",
-          }}
+          aria-label={`Loading ${mode === "classic" ? "CKZ" : "VNL"} player records`}
+          style={{ minHeight: "420px" }}
         >
-          Loading {mode === "classic" ? "CKZ" : "VNL"} records in the background…
+          <div className="spinner-white" />
         </div>
-      )}
+      ) : recordsError ? (
+        <div className="empty-state" role="alert" style={{ minHeight: "260px", display: "grid", placeContent: "center", gap: "12px" }}>
+          <span>{recordsError}</span>
+          <button type="button" className="btn-minimal" onClick={() => setRecordsReloadKey((value) => value + 1)}>
+            Retry
+          </button>
+        </div>
+      ) : (
+        <>
 
       {/* 2. Split Overview Section: Tier Breakdown (Left) & 4 Stat Cards in 2x2 Grid (Right) */}
       <div
@@ -1005,6 +1006,8 @@ export function ProfileBrowser({
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

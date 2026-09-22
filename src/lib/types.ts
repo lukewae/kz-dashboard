@@ -125,7 +125,7 @@ export interface KzServer {
 
 export interface KzDataProvider {
   game: "cs2" | "csgo";
-  getAllMaps(): Promise<KzMap[]>;
+  getAllMaps(options?: { attachImages?: boolean }): Promise<KzMap[]>;
   searchMaps(query: string): Promise<KzMap[]>;
   getMap(name: string): Promise<KzMap | null>;
   getRecords(query: RecordsQuery): Promise<Page<KzRecord>>;

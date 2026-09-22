@@ -6,9 +6,10 @@ import { KzPlayer, KzRecord, KzSteamProfile, Mode, Page } from "@/lib/types";
 
 const API_BASE_URL = "https://api.cs2kz.org";
 const SUMMARY_TTL_MS = 5 * 60 * 1000;
-const RECORDS_TTL_MS = 2 * 60 * 1000;
+const RECORDS_TTL_MS = 10 * 60 * 1000;
 const AVATAR_TTL_MS = 24 * 60 * 60 * 1000;
-const RANKS_TTL_MS = 5 * 60 * 1000;
+const RECENT_WORLD_RECORDS_TTL_MS = 5 * 60 * 1000;
+const RECENT_WORLD_RECORDS_MAX_STALE_MS = 24 * 60 * 60 * 1000;
 
 interface TimedValue<T> {
   value: T;
@@ -20,9 +21,10 @@ export interface PlayerSummary {
   steamProfile: KzSteamProfile | null;
 }
 
-export interface ProfileRanks {
-  overallRank: number | null;
-  wrLeaderboardRank: number | null;
+export interface TopWrPlayer {
+  id: string;
+  name: string;
+  count: number;
 }
 
 const summaryCache = new Map<string, TimedValue<PlayerSummary>>();
@@ -33,13 +35,19 @@ const worldRecordsCache = new Map<string, TimedValue<KzRecord[]>>();
 const worldRecordsRequests = new Map<string, Promise<KzRecord[]>>();
 const leaderboardPlayersCache = new Map<string, TimedValue<Page<KzPlayer>>>();
 const leaderboardPlayersRequests = new Map<string, Promise<Page<KzPlayer>>>();
-const worldRecordsPageCache = new Map<string, TimedValue<Page<KzRecord>>>();
-const worldRecordsPageRequests = new Map<string, Promise<Page<KzRecord>>>();
-const steamProfileCache = new Map<string, TimedValue<KzSteamProfile>>();
-const steamProfileRequests = new Map<string, Promise<KzSteamProfile | null>>();
+const wrHoldersPageCache = new Map<string, TimedValue<Page<TopWrPlayer>>>();
+const wrHoldersPageRequests = new Map<string, Promise<Page<TopWrPlayer>>>();
 const avatarCache = new Map<string, TimedValue<string>>();
-const profileRanksCache = new Map<string, TimedValue<ProfileRanks>>();
-const profileRanksRequests = new Map<string, Promise<ProfileRanks>>();
+
+interface StoredRecentWorldRecords {
+  savedAt: number;
+  records: KzRecord[];
+}
+
+interface StoredPlayerRecords {
+  savedAt: number;
+  records: KzRecord[];
+}
 
 function getFresh<T>(cache: Map<string, TimedValue<T>>, key: string): T | null {
   const cached = cache.get(key);
@@ -64,31 +72,6 @@ async function fetchJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function getSteamProfileDirect(steamId: string): Promise<KzSteamProfile | null> {
-  const cleanId = sanitizeSteamId(steamId);
-  const cached = getFresh(steamProfileCache, cleanId);
-  if (cached) return Promise.resolve(cached);
-
-  const pending = steamProfileRequests.get(cleanId);
-  if (pending) return pending;
-
-  const request = fetchJson<KzSteamProfile>(
-    `/players/${encodeURIComponent(cleanId)}/steam-profile`
-  )
-    .then((profile) => {
-      steamProfileCache.set(cleanId, {
-        value: profile,
-        expiresAt: Date.now() + AVATAR_TTL_MS,
-      });
-      return profile;
-    })
-    .catch(() => null)
-    .finally(() => steamProfileRequests.delete(cleanId));
-
-  steamProfileRequests.set(cleanId, request);
-  return request;
-}
-
 export function getPlayerSummaryDirect(steamId: string): Promise<PlayerSummary> {
   const cleanId = sanitizeSteamId(steamId);
   const cached = getFresh(summaryCache, cleanId);
@@ -97,12 +80,16 @@ export function getPlayerSummaryDirect(steamId: string): Promise<PlayerSummary> 
   const pending = summaryRequests.get(cleanId);
   if (pending) return pending;
 
-  const request = Promise.all([
-    fetchJson<KzPlayer>(`/players/${encodeURIComponent(cleanId)}`).catch(() => null),
-    getSteamProfileDirect(cleanId),
-  ])
-    .then(([player, steamProfile]) => {
-      const value = { player, steamProfile };
+  const params = new URLSearchParams({ steamId: cleanId });
+  const request = fetch(`/api/cs2kz/player-summary?${params.toString()}`, {
+    headers: { Accept: "application/json" },
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Player summary request failed (${response.status})`);
+      return response.json() as Promise<PlayerSummary>;
+    })
+    .then((value) => {
+      const { player, steamProfile } = value;
       if (player || steamProfile) {
         summaryCache.set(cleanId, { value, expiresAt: Date.now() + SUMMARY_TTL_MS });
       }
@@ -120,21 +107,49 @@ export function getPlayerRecordsDirect(steamId: string, mode: Mode): Promise<KzR
   const cached = getFresh(recordsCache, key);
   if (cached) return Promise.resolve(cached);
 
+  try {
+    const raw = sessionStorage.getItem(`player-records:${key}`);
+    if (raw) {
+      const stored = JSON.parse(raw) as Partial<StoredPlayerRecords>;
+      if (
+        typeof stored.savedAt === "number" &&
+        Date.now() - stored.savedAt <= RECORDS_TTL_MS &&
+        Array.isArray(stored.records)
+      ) {
+        recordsCache.set(key, {
+          value: stored.records,
+          expiresAt: stored.savedAt + RECORDS_TTL_MS,
+        });
+        return Promise.resolve(stored.records);
+      }
+      sessionStorage.removeItem(`player-records:${key}`);
+    }
+  } catch {
+    // Session storage is optional; shared server caching still applies.
+  }
+
   const pending = recordsRequests.get(key);
   if (pending) return pending;
 
-  const params = new URLSearchParams({
-    player: cleanId,
-    mode,
-    top: "true",
-    limit: "1000",
-    offset: "0",
-  });
-
-  const request = fetchJson<Page<KzRecord>>(`/records?${params.toString()}`)
-    .then((page) => {
-      const records = Array.isArray(page.values) ? page.values : [];
+  const params = new URLSearchParams({ steamId: cleanId, mode });
+  const request = fetch(`/api/cs2kz/player-records?${params.toString()}`, {
+    headers: { Accept: "application/json" },
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Player records request failed (${response.status})`);
+      return response.json() as Promise<{ records?: KzRecord[] }>;
+    })
+    .then((result) => {
+      const records = Array.isArray(result.records) ? result.records : [];
       recordsCache.set(key, { value: records, expiresAt: Date.now() + RECORDS_TTL_MS });
+      try {
+        sessionStorage.setItem(
+          `player-records:${key}`,
+          JSON.stringify({ savedAt: Date.now(), records } satisfies StoredPlayerRecords)
+        );
+      } catch {
+        // Large profiles or private browsing can reject storage writes.
+      }
       return records;
     })
     .finally(() => recordsRequests.delete(key));
@@ -151,25 +166,57 @@ export function getRecentWorldRecordsDirect(mode: Mode, limit = 5): Promise<KzRe
   const pending = worldRecordsRequests.get(key);
   if (pending) return pending;
 
-  const params = new URLSearchParams({
-    mode,
-    top: "true",
-    max_rank: "1",
-    limit: String(limit),
-    offset: "0",
-  });
-
-  const request = fetchJson<Page<KzRecord>>(`/records?${params.toString()}`)
-    .then((page) => {
-      const records = Array.isArray(page.values) ? page.values : [];
-      worldRecordsCache.set(key, { value: records, expiresAt: Date.now() + 30_000 });
+  const params = new URLSearchParams({ mode });
+  const request = fetch(`/api/cs2kz/recent-world-records?${params.toString()}`, {
+    headers: { Accept: "application/json" },
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Recent world records request failed (${response.status})`);
+      return response.json() as Promise<{ records?: KzRecord[] }>;
+    })
+    .then((result) => {
+      const records = Array.isArray(result.records) ? result.records.slice(0, limit) : [];
+      worldRecordsCache.set(key, {
+        value: records,
+        expiresAt: Date.now() + RECENT_WORLD_RECORDS_TTL_MS,
+      });
+      try {
+        localStorage.setItem(
+          `recent-world-records:${key}`,
+          JSON.stringify({ savedAt: Date.now(), records } satisfies StoredRecentWorldRecords)
+        );
+      } catch {
+        // Storage may be unavailable in private browsing; the memory cache still works.
+      }
       return records;
     })
-    .catch(() => [])
     .finally(() => worldRecordsRequests.delete(key));
 
   worldRecordsRequests.set(key, request);
   return request;
+}
+
+export function getCachedRecentWorldRecords(mode: Mode, limit = 5): KzRecord[] {
+  const key = `${mode}:${limit}`;
+  const memoryCached = getFresh(worldRecordsCache, key);
+  if (memoryCached) return memoryCached;
+
+  try {
+    const raw = localStorage.getItem(`recent-world-records:${key}`);
+    if (!raw) return [];
+    const stored = JSON.parse(raw) as Partial<StoredRecentWorldRecords>;
+    if (
+      typeof stored.savedAt !== "number" ||
+      Date.now() - stored.savedAt > RECENT_WORLD_RECORDS_MAX_STALE_MS ||
+      !Array.isArray(stored.records)
+    ) {
+      localStorage.removeItem(`recent-world-records:${key}`);
+      return [];
+    }
+    return stored.records.slice(0, limit);
+  } catch {
+    return [];
+  }
 }
 
 export function getLeaderboardPlayersPageDirect(mode: Mode, offset: number, limit = 10): Promise<Page<KzPlayer>> {
@@ -196,86 +243,40 @@ export function getLeaderboardPlayersPageDirect(mode: Mode, offset: number, limi
   return request;
 }
 
-export function getWorldRecordsPageDirect(
+export function getWrHoldersPageDirect(
   mode: Mode,
   offset: number,
-  limit = 10,
   rankedOnly = true
-): Promise<Page<KzRecord>> {
-  const key = `${mode}:${offset}:${limit}:${rankedOnly}`;
-  const cached = getFresh(worldRecordsPageCache, key);
+): Promise<Page<TopWrPlayer>> {
+  const key = `${mode}:${offset}:${rankedOnly}`;
+  const cached = getFresh(wrHoldersPageCache, key);
   if (cached) return Promise.resolve(cached);
 
-  const pending = worldRecordsPageRequests.get(key);
+  const pending = wrHoldersPageRequests.get(key);
   if (pending) return pending;
 
   const params = new URLSearchParams({
     mode,
-    top: "true",
-    max_rank: "1",
-    limit: String(limit),
     offset: String(offset),
+    rankedOnly: String(rankedOnly),
   });
-  if (rankedOnly) params.set("ranked", "true");
-
-  const request = fetchJson<Page<KzRecord>>(`/records?${params.toString()}`)
+  const request = fetch(`/api/cs2kz/wr-holders?${params.toString()}`, {
+    headers: { Accept: "application/json" },
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`WR holders request failed (${response.status})`);
+      return response.json() as Promise<Page<TopWrPlayer>>;
+    })
     .then((result) => {
-      worldRecordsPageCache.set(key, { value: result, expiresAt: Date.now() + 30_000 });
+      wrHoldersPageCache.set(key, {
+        value: result,
+        expiresAt: Date.now() + RECENT_WORLD_RECORDS_TTL_MS,
+      });
       return result;
     })
-    .finally(() => worldRecordsPageRequests.delete(key));
+    .finally(() => wrHoldersPageRequests.delete(key));
 
-  worldRecordsPageRequests.set(key, request);
-  return request;
-}
-
-export function getProfileRanksDirect(steamId: string, mode: Mode): Promise<ProfileRanks> {
-  const cleanId = sanitizeSteamId(steamId);
-  const key = `${cleanId}:${mode}`;
-  const cached = getFresh(profileRanksCache, key);
-  if (cached) return Promise.resolve(cached);
-
-  const pending = profileRanksRequests.get(key);
-  if (pending) return pending;
-
-  const playersQuery = new URLSearchParams({
-    sort_by: mode === "classic" ? "ckz-rating" : "vnl-rating",
-    limit: "1000",
-    offset: "0",
-  });
-  const recordsQuery = new URLSearchParams({
-    mode,
-    top: "true",
-    max_rank: "1",
-    limit: "1000",
-    offset: "0",
-  });
-
-  const request = Promise.all([
-    fetchJson<Page<KzPlayer>>(`/players?${playersQuery.toString()}`).catch(() => ({ total: 0, values: [] })),
-    fetchJson<Page<KzRecord>>(`/records?${recordsQuery.toString()}`).catch(() => ({ total: 0, values: [] })),
-  ])
-    .then(([players, worldRecords]) => {
-      const overallIndex = players.values.findIndex((player) => sanitizeSteamId(player.id) === cleanId);
-      const wrCounts = new Map<string, number>();
-      for (const record of worldRecords.values) {
-        if (!record.player?.id) continue;
-        const playerId = sanitizeSteamId(record.player.id);
-        wrCounts.set(playerId, (wrCounts.get(playerId) ?? 0) + 1);
-      }
-      const wrIndex = Array.from(wrCounts.entries())
-        .sort((a, b) => b[1] - a[1])
-        .findIndex(([playerId]) => playerId === cleanId);
-      const value = {
-        overallRank: overallIndex >= 0 ? overallIndex + 1 : null,
-        wrLeaderboardRank: wrIndex >= 0 ? wrIndex + 1 : null,
-      };
-      profileRanksCache.set(key, { value, expiresAt: Date.now() + RANKS_TTL_MS });
-      return value;
-    })
-    .finally(() => profileRanksRequests.delete(key));
-
-  profileRanksRequests.set(key, request);
+  wrHoldersPageRequests.set(key, request);
   return request;
 }
 

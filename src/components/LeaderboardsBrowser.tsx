@@ -3,10 +3,10 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { formatRank, formatTime, getPlayerRank, getRankColor, sanitizeSteamId } from "@/lib/format";
-import { KzPlayer, KzRecord, Mode, Page } from "@/lib/types";
+import { formatRank, getPlayerRank, getRankColor, sanitizeSteamId } from "@/lib/format";
+import { KzPlayer, Mode, Page } from "@/lib/types";
 import { useUserSteamId } from "@/lib/useUserSteamId";
-import { getLeaderboardPlayersPageDirect, getSteamAvatarsDirect, getWorldRecordsPageDirect } from "@/lib/clientCs2kz";
+import { getLeaderboardPlayersPageDirect, getSteamAvatarsDirect, getWrHoldersPageDirect, TopWrPlayer } from "@/lib/clientCs2kz";
 
 const PAGE_SIZE = 10;
 
@@ -50,7 +50,7 @@ export function LeaderboardsBrowser({
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [avatarsMap, setAvatarsMap] = useState<Record<string, string>>({});
   const [topPlayersPage, setTopPlayersPage] = useState<Page<KzPlayer>>({ total: 0, values: [] });
-  const [worldRecordsPage, setWorldRecordsPage] = useState<Page<KzRecord>>({ total: 0, values: [] });
+  const [wrHoldersPage, setWrHoldersPage] = useState<Page<TopWrPlayer>>({ total: 0, values: [] });
   const [playersOffset, setPlayersOffset] = useState(0);
   const [recordsOffset, setRecordsOffset] = useState(0);
   const [playersLoading, setPlayersLoading] = useState(true);
@@ -59,9 +59,7 @@ export function LeaderboardsBrowser({
   useEffect(() => {
     let active = true;
     setPlayersOffset(0);
-    setRecordsOffset(0);
     setPlayersLoading(true);
-    setRecordsLoading(true);
 
     getLeaderboardPlayersPageDirect(mode, 0, PAGE_SIZE)
       .then((page) => {
@@ -72,19 +70,27 @@ export function LeaderboardsBrowser({
         if (active) setPlayersLoading(false);
       });
 
-    getWorldRecordsPageDirect(mode, 0, PAGE_SIZE, rankedOnly)
-      .then((page) => {
-        if (active) setWorldRecordsPage(page);
-      })
-      .catch((error) => console.error("Failed to load world records:", error))
-      .finally(() => {
-        if (active) setRecordsLoading(false);
-      });
-
     return () => {
       active = false;
     };
-  }, [mode]); // Track filtering is handled explicitly by changeRankedOnly.
+  }, [mode]);
+
+  useEffect(() => {
+    let active = true;
+    setRecordsOffset(0);
+    setRecordsLoading(true);
+    getWrHoldersPageDirect(mode, 0, rankedOnly)
+      .then((page) => {
+        if (active) setWrHoldersPage(page);
+      })
+      .catch((error) => console.error("Failed to load WR holders:", error))
+      .finally(() => {
+        if (active) setRecordsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [mode, rankedOnly]);
 
   // Filtered Rating Players
   const filteredRatingPlayers = useMemo(() => {
@@ -99,21 +105,15 @@ export function LeaderboardsBrowser({
     });
   }, [topPlayersPage, searchQuery]);
 
-  // Search applies to the ten records currently loaded from the API.
-  const filteredWorldRecords = useMemo(() => {
-    return worldRecordsPage.values.filter((record) => {
+  const filteredWrHolders = useMemo(() => {
+    return wrHoldersPage.values.filter((player) => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const playerName = record.player?.name ?? "";
-        const playerId = record.player?.id ?? "";
-        const mapName = record.map?.name ?? "";
-        return playerName.toLowerCase().includes(q) ||
-          playerId.toLowerCase().includes(q) ||
-          mapName.toLowerCase().includes(q);
+        return player.name.toLowerCase().includes(q) || player.id.toLowerCase().includes(q);
       }
       return true;
     });
-  }, [worldRecordsPage, searchQuery]);
+  }, [wrHoldersPage, searchQuery]);
 
   // Steam IDs to fetch avatars for (visible across both tables)
   const visibleSteamIds = useMemo(() => {
@@ -121,11 +121,11 @@ export function LeaderboardsBrowser({
     filteredRatingPlayers.forEach((p) => {
       if (p.id) ids.add(sanitizeSteamId(p.id));
     });
-    filteredWorldRecords.forEach((record) => {
-      if (record.player?.id) ids.add(sanitizeSteamId(record.player.id));
+    filteredWrHolders.forEach((player) => {
+      if (player.id) ids.add(sanitizeSteamId(player.id));
     });
     return Array.from(ids);
-  }, [filteredRatingPlayers, filteredWorldRecords]);
+  }, [filteredRatingPlayers, filteredWrHolders]);
 
   const loadPlayersPage = async (nextOffset: number) => {
     if (playersLoading || nextOffset < 0) return;
@@ -141,12 +141,12 @@ export function LeaderboardsBrowser({
     }
   };
 
-  const loadRecordsPage = async (nextOffset: number, nextRankedOnly = rankedOnly) => {
+  const loadRecordsPage = async (nextOffset: number) => {
     if (recordsLoading || nextOffset < 0) return;
     setRecordsLoading(true);
     try {
-      const page = await getWorldRecordsPageDirect(mode, nextOffset, PAGE_SIZE, nextRankedOnly);
-      setWorldRecordsPage(page);
+      const page = await getWrHoldersPageDirect(mode, nextOffset, rankedOnly);
+      setWrHoldersPage(page);
       setRecordsOffset(nextOffset);
     } catch (error) {
       console.error("Failed to load world records page:", error);
@@ -158,7 +158,6 @@ export function LeaderboardsBrowser({
   const changeRankedOnly = (nextRankedOnly: boolean) => {
     if (rankedOnly === nextRankedOnly) return;
     setRankedOnly(nextRankedOnly);
-    void loadRecordsPage(0, nextRankedOnly);
   };
 
   useEffect(() => {
@@ -446,7 +445,7 @@ export function LeaderboardsBrowser({
           />
         </div>
 
-        {/* Right Column: Recent World Records */}
+        {/* Right Column: World Record Holders */}
         <div
           style={{
             background: "var(--surface)",
@@ -469,10 +468,10 @@ export function LeaderboardsBrowser({
           >
             <div>
               <h2 style={{ fontSize: "15px", fontWeight: 700, margin: 0, letterSpacing: "0.02em" }}>
-                Recent World Records
+                World Records Leaderboard
               </h2>
               <span style={{ fontSize: "11px", color: "var(--text-subtle)", fontFamily: "monospace" }}>
-                Latest #1 times from the CS2KZ API
+                Most #1 Times Held
               </span>
             </div>
             <span
@@ -485,7 +484,7 @@ export function LeaderboardsBrowser({
                 padding: "2px 8px",
               }}
             >
-              {recordsLoading ? "LOADING" : `${worldRecordsPage.total.toLocaleString()} RECORDS`}
+              {recordsLoading ? "LOADING" : `${wrHoldersPage.total.toLocaleString()} WR HOLDERS`}
             </span>
           </div>
 
@@ -495,35 +494,34 @@ export function LeaderboardsBrowser({
                 <tr>
                   <th style={{ width: "50px" }}>#</th>
                   <th>Player</th>
-                  <th>Map / Course</th>
-                  <th style={{ width: "90px", textAlign: "right" }}>Time</th>
+                  <th style={{ width: "140px", textAlign: "right" }}>World Records</th>
+                  <th style={{ width: "90px", textAlign: "center" }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredWorldRecords.map((record, idx) => {
-                  const rowNum = recordsOffset + idx + 1;
-                  const cleanWrId = sanitizeSteamId(record.player.id);
+                {filteredWrHolders.map((player, idx) => {
+                  const rankNum = recordsOffset + idx + 1;
+                  const rankColor = getRankColor(rankNum);
+                  const cleanWrId = sanitizeSteamId(player.id);
                   const isCurrentUser =
                     !!userSteamId &&
                     cleanWrId.toLowerCase() === userSteamId.toLowerCase();
                   const avatarUrl = avatarsMap[cleanWrId];
-                  const displayName = record.player.name || cleanWrId;
-                  const mapName = record.map?.name || "Unknown map";
-                  const courseName = record.course?.name || "Main";
+                  const displayName = player.name || cleanWrId;
 
                   return (
                     <tr
-                      key={record.id}
+                      key={player.id}
                       className={isCurrentUser ? "current-user-row" : ""}
                     >
                       <td
                         className="mono"
                         style={{
-                          color: isCurrentUser ? "var(--user-blue)" : "var(--text-subtle)",
-                          fontWeight: isCurrentUser ? 700 : 500,
+                          color: isCurrentUser ? "var(--user-blue)" : rankColor,
+                          fontWeight: rankNum <= 3 || isCurrentUser ? 700 : 500,
                         }}
                       >
-                        {rowNum}
+                        {formatRank(rankNum)}
                       </td>
                       <td>
                         <Link
@@ -564,34 +562,46 @@ export function LeaderboardsBrowser({
                           {isCurrentUser && <span className="current-user-tag">YOU</span>}
                         </Link>
                       </td>
-                      <td>
-                        <Link
-                          href={`/maps/${encodeURIComponent(mapName)}?course=${encodeURIComponent(courseName)}&mode=${mode}`}
-                          prefetch={false}
-                          className="player-link"
-                          style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}
+                      <td style={{ textAlign: "right" }}>
+                        <span
+                          className="tag-badge"
+                          style={{
+                            color: "rgb(255, 215, 0)",
+                            borderColor: "rgba(255, 215, 0, 0.5)",
+                            background: "rgba(255, 215, 0, 0.12)",
+                            fontWeight: 700,
+                            fontSize: "11px",
+                            padding: "2px 8px",
+                            fontFamily: "ui-monospace, monospace",
+                          }}
                         >
-                          <span style={{ color: "#fff", fontWeight: 600 }}>{mapName}</span>
-                          <span style={{ color: "var(--text-subtle)", fontSize: "11px" }}>{courseName}</span>
-                        </Link>
+                          ★ {player.count} {player.count === 1 ? "WR" : "WRs"}
+                        </span>
                       </td>
-                      <td className="mono" style={{ textAlign: "right", color: "rgb(255, 215, 0)", fontWeight: 700 }}>
-                        {formatTime(record.time)}
+                      <td style={{ textAlign: "center" }}>
+                        <Link
+                          href={`/profile/${cleanWrId}?mode=${mode}`}
+                          prefetch={false}
+                          className="btn-minimal"
+                          style={{ padding: "2px 8px", fontSize: "11px", display: "inline-block" }}
+                        >
+                          Profile ↗
+                        </Link>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            {filteredWorldRecords.length === 0 && (
+            {filteredWrHolders.length === 0 && (
               <div className="empty-state">
-                {recordsLoading ? "Loading 10 world records…" : "No world records found."}
+                {recordsLoading ? "Loading WR holders…" : "No world record holders found."}
               </div>
             )}
           </div>
           <PaginationControls
             offset={recordsOffset}
-            total={worldRecordsPage.total}
+            total={wrHoldersPage.total}
             loading={recordsLoading}
             onPrevious={() => void loadRecordsPage(recordsOffset - PAGE_SIZE)}
             onNext={() => void loadRecordsPage(recordsOffset + PAGE_SIZE)}

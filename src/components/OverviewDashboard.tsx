@@ -11,7 +11,7 @@ import { CountryFlag, formatLocation, normalizeServerGeo, ServerMapThumb } from 
 import { MapRoulette } from "@/components/MapRoulette";
 import { PlayerActivityWidget } from "@/components/PlayerActivityWidget";
 import { getCachedUserProfile, setCachedUserProfile } from "@/lib/userProfileCache";
-import { getPlayerRecordsDirect, getPlayerSummaryDirect, getRecentWorldRecordsDirect, getSteamAvatarsDirect } from "@/lib/clientCs2kz";
+import { getCachedRecentWorldRecords, getPlayerRecordsDirect, getPlayerSummaryDirect, getRecentWorldRecordsDirect, getSteamAvatarsDirect } from "@/lib/clientCs2kz";
 
 export function OverviewDashboard({
   mode,
@@ -45,13 +45,19 @@ export function OverviewDashboard({
   // slow. Load it after the page is interactive instead of blocking first paint.
   useEffect(() => {
     let active = true;
-    setRecentWrs(initialRecentWrs);
-    setRecentWrsLoading(initialRecentWrs.length === 0);
-    getRecentWorldRecordsDirect(mode, 5).then((records) => {
-      if (!active) return;
-      if (records.length > 0) setRecentWrs(records);
-      setRecentWrsLoading(false);
-    });
+    const cachedRecords = getCachedRecentWorldRecords(mode, 5);
+    const immediateRecords = initialRecentWrs.length > 0 ? initialRecentWrs : cachedRecords;
+    setRecentWrs(immediateRecords);
+    setRecentWrsLoading(immediateRecords.length === 0);
+    getRecentWorldRecordsDirect(mode, 5)
+      .then((records) => {
+        if (!active) return;
+        if (records.length > 0) setRecentWrs(records);
+      })
+      .catch((error) => console.error("Failed to refresh recent world records:", error))
+      .finally(() => {
+        if (active) setRecentWrsLoading(false);
+      });
     return () => {
       active = false;
     };

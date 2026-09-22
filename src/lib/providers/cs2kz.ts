@@ -126,7 +126,7 @@ async function attachSteamImages(maps: KzMap[]): Promise<KzMap[]> {
 export const cs2kzProvider: KzDataProvider = {
   game: "cs2",
 
-  async getAllMaps(): Promise<KzMap[]> {
+  async getAllMaps(options: { attachImages?: boolean } = {}): Promise<KzMap[]> {
     try {
       const data = page<unknown>(
         await request<unknown>("/maps", {
@@ -137,7 +137,7 @@ export const cs2kzProvider: KzDataProvider = {
       const valid = data.values
         .filter(validMap)
         .filter((m) => m.state?.toLowerCase() !== "invalid");
-      return await attachSteamImages(valid);
+      return options.attachImages === false ? valid : await attachSteamImages(valid);
     } catch (err) {
       console.error("Failed to fetch maps from CS2KZ API:", err);
       return [];
